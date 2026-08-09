@@ -427,7 +427,16 @@
           Store.setLocation(p.id, ll.lat, ll.lng, p.geocode, true);
           MV._onStatus('Pin moved to ' + U.formatLatLng(ll.lat, ll.lng) + ' (marked hand-placed).');
         });
-        entry.pin.on('click', function () { MV.select(p.id); });
+        entry.pin.on('click', function (e) {
+          // A marker swallows the map click, but in the click-the-map modes the
+          // pin is exactly where the user aims — pass it through.
+          var at = e.latlng || L.latLng(p.lat, p.lng);
+          if (MV.mode === 'parcel' || MV.mode === 'place' || MV.mode === 'draw') {
+            MV.onMapClick({ latlng: at });
+            return;
+          }
+          MV.select(p.id);
+        });
       } else {
         entry.pin.setLatLng([p.lat, p.lng]);
         entry.pin.setIcon(pinIcon(p));
