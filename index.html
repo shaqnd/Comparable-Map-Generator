@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparable Sales Map Generator</title>
+<link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ───────────────────────── SIDEBAR ───────────────────────── -->
+  <aside id="sidebar">
+    <header class="brand">
+      <div class="brand-mark">CM</div>
+      <div class="brand-text">
+        <strong>Comparable Sales Map</strong>
+        <span id="projectNameDisplay">Untitled map</span>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="properties" role="tab">Properties</button>
+      <button class="tab" data-tab="map" role="tab">Map</button>
+      <button class="tab" data-tab="export" role="tab">Export</button>
+    </nav>
+
+    <div class="tab-body">
+
+      <!-- ========== PROPERTIES ========== -->
+      <section class="tabpanel is-active" data-panel="properties">
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Subject Property</h3>
+          </div>
+          <div id="subjectCard" class="card-host"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Comparable Sales</h3>
+            <span class="pill" id="compCount">0</span>
+          </div>
+          <div id="compList" class="card-host"></div>
+          <div class="panel-actions">
+            <button id="addComp" class="btn btn-primary btn-block">+ Add comparable</button>
+          </div>
+          <details class="sub">
+            <summary>Paste a list of addresses</summary>
+            <p class="hint">One address per line. Each becomes a numbered comparable and is
+               geocoded automatically.</p>
+            <textarea id="bulkText" rows="5"
+              placeholder="123 Main St, Denver, CO 80202&#10;456 Oak Ave, Denver, CO 80203"></textarea>
+            <button id="bulkAdd" class="btn btn-block">Add &amp; geocode all</button>
+          </details>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Project</h3></div>
+          <label class="field">
+            <span>Map title</span>
+            <input type="text" id="mapTitle" placeholder="Comparable Sales Map">
+          </label>
+          <label class="field">
+            <span>Subtitle / file no.</span>
+            <input type="text" id="mapSubtitle" placeholder="File #2026-0142">
+          </label>
+          <div class="btn-row">
+            <button id="saveProject" class="btn">Save file</button>
+            <button id="loadProject" class="btn">Open file</button>
+            <button id="newProject" class="btn btn-danger-ghost">New</button>
+          </div>
+          <input type="file" id="loadProjectInput" accept=".json,application/json" hidden>
+          <p class="hint" id="autosaveNote">Work is auto-saved in this browser.</p>
+        </div>
+      </section>
+
+      <!-- ========== MAP ========== -->
+      <section class="tabpanel" data-panel="map">
+
+        <div class="panel">
+          <div class="panel-head"><h3>Base layer</h3></div>
+          <div id="basemapChooser" class="chooser"></div>
+          <label class="check">
+            <input type="checkbox" id="toggleLabelsOverlay" checked>
+            <span>Street names &amp; labels over aerial</span>
+          </label>
+          <label class="field">
+            <span>Base layer brightness <b id="dimVal">100%</b></span>
+            <input type="range" id="basemapDim" min="40" max="120" value="100">
+          </label>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Parcels</h3></div>
+          <p class="hint">Pick a parcel service for your county, then use
+            <b>Select parcel</b> on the toolbar and click a property.</p>
+          <label class="field">
+            <span>Parcel service</span>
+            <select id="parcelPreset"></select>
+          </label>
+          <label class="field" id="parcelUrlField">
+            <span>ArcGIS layer URL (FeatureServer/MapServer layer)</span>
+            <input type="text" id="parcelUrl"
+                   placeholder="https://…/arcgis/rest/services/Parcels/FeatureServer/0">
+          </label>
+          <div class="btn-row">
+            <button id="testParcel" class="btn">Test service</button>
+            <button id="saveParcelPreset" class="btn">Save as preset</button>
+          </div>
+          <div id="parcelStatus" class="status"></div>
+          <label class="check">
+            <input type="checkbox" id="toggleParcelFill" checked>
+            <span>Shade selected parcels</span>
+          </label>
+          <label class="field">
+            <span>Parcel outline colour</span>
+            <input type="color" id="parcelColor" value="#ffd400">
+          </label>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Markers &amp; labels</h3></div>
+          <div class="grid2">
+            <label class="field"><span>Subject colour</span>
+              <input type="color" id="subjectColor" value="#d61f26"></label>
+            <label class="field"><span>Comp colour</span>
+              <input type="color" id="compColor" value="#1a56db"></label>
+          </div>
+          <label class="field">
+            <span>Label text size <b id="labelSizeVal">13 px</b></span>
+            <input type="range" id="labelSize" min="9" max="24" value="13">
+          </label>
+          <label class="field">
+            <span>Pin size <b id="pinSizeVal">100%</b></span>
+            <input type="range" id="pinScale" min="60" max="180" value="100">
+          </label>
+          <label class="check"><input type="checkbox" id="toggleLabels" checked>
+            <span>Show text labels</span></label>
+          <label class="check"><input type="checkbox" id="toggleLeaders" checked>
+            <span>Leader lines from label to pin</span></label>
+          <label class="check"><input type="checkbox" id="toggleConnectors">
+            <span>Draw lines from subject to each comp</span></label>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Map furniture</h3></div>
+          <label class="check"><input type="checkbox" id="toggleTitle" checked>
+            <span>Title block</span></label>
+          <label class="check"><input type="checkbox" id="toggleLegend" checked>
+            <span>Legend / comparable schedule</span></label>
+          <label class="field"><span>Legend position</span>
+            <select id="legendPos">
+              <option value="bottom-right">Bottom right</option>
+              <option value="bottom-left">Bottom left</option>
+              <option value="top-right">Top right</option>
+              <option value="top-left">Top left</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" id="toggleLegendDist" checked>
+            <span>Include distance from subject in legend</span></label>
+          <label class="check"><input type="checkbox" id="toggleNorth" checked>
+            <span>North arrow</span></label>
+          <label class="check"><input type="checkbox" id="toggleScale" checked>
+            <span>Scale bar</span></label>
+          <label class="field">
+            <span>Radius rings around subject (miles, comma-separated)</span>
+            <input type="text" id="radiusRings" placeholder="0.5, 1, 2">
+          </label>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Diagnostics</h3></div>
+          <p class="hint">Verifies that geocoding, imagery and parcel services are reachable
+             from this computer/network.</p>
+          <button id="runDiagnostics" class="btn btn-block">Run connection test</button>
+          <div id="diagOutput" class="status"></div>
+        </div>
+      </section>
+
+      <!-- ========== EXPORT ========== -->
+      <section class="tabpanel" data-panel="export">
+        <div class="panel">
+          <div class="panel-head"><h3>Output size</h3></div>
+          <p class="hint">The map area on screen always matches this shape exactly, so what you
+             see is what you get.</p>
+          <label class="field"><span>Preset</span>
+            <select id="exportPreset"></select>
+          </label>
+          <div class="grid2">
+            <label class="field"><span>Width (in)</span>
+              <input type="number" id="exportW" step="0.25" min="1" value="7.5"></label>
+            <label class="field"><span>Height (in)</span>
+              <input type="number" id="exportH" step="0.25" min="1" value="5"></label>
+          </div>
+          <label class="field"><span>Resolution</span>
+            <select id="exportDpi">
+              <option value="150">150 DPI — screen / draft</option>
+              <option value="200">200 DPI — good print</option>
+              <option value="300" selected>300 DPI — report quality</option>
+            </select>
+          </label>
+          <div class="readout" id="exportReadout"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Create image</h3></div>
+          <button id="exportPng" class="btn btn-primary btn-block">Download PNG</button>
+          <button id="exportClip" class="btn btn-block">Copy to clipboard</button>
+          <button id="exportJpg" class="btn btn-block">Download JPG</button>
+          <p class="hint">Paste directly into Word with <b>Ctrl&nbsp;+&nbsp;V</b> after copying.</p>
+          <label class="field"><span>File name</span>
+            <input type="text" id="exportName" placeholder="comparable-sales-map"></label>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Framing</h3></div>
+          <button id="fitAll" class="btn btn-block">Fit subject + all comps</button>
+          <button id="fitSubject" class="btn btn-block">Centre on subject</button>
+          <p class="hint">Fine-tune by panning and zooming the map; the export uses the exact
+             view shown.</p>
+        </div>
+      </section>
+
+    </div>
+  </aside>
+
+  <!-- ───────────────────────── STAGE ───────────────────────── -->
+  <main id="stage">
+    <div id="toolbar">
+      <div class="tool-group">
+        <button class="tool is-active" id="modePan" data-mode="pan" title="Pan and select (V)">
+          <span class="tool-ico">✥</span> Pan</button>
+        <button class="tool" id="modeParcel" data-mode="parcel" title="Click a property to select its parcel (P)">
+          <span class="tool-ico">▨</span> Select parcel</button>
+        <button class="tool" id="modeDraw" data-mode="draw" title="Trace a boundary by hand (D)">
+          <span class="tool-ico">✎</span> Draw boundary</button>
+        <button class="tool" id="modePlace" data-mode="place" title="Click the map to place the next pin (M)">
+          <span class="tool-ico">⌖</span> Place pin</button>
+      </div>
+      <div class="tool-group">
+        <button class="tool" id="btnFitAll" title="Fit everything in view">Fit all</button>
+        <button class="tool" id="btnUndo" title="Undo (Ctrl+Z)">Undo</button>
+      </div>
+      <div class="spacer"></div>
+      <div id="modeHint" class="mode-hint">Drag to pan · scroll to zoom · drag a pin or label to move it</div>
+    </div>
+
+    <div id="canvasArea">
+      <!-- everything inside #mapFrame is what gets exported -->
+      <div id="mapFrame">
+        <div id="map"></div>
+
+        <div class="ov ov-title" id="ovTitle">
+          <div class="ov-scale">
+            <div class="title-block">
+              <div class="title-main" id="ovTitleMain">Comparable Sales Map</div>
+              <div class="title-sub" id="ovTitleSub"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ov ov-north" id="ovNorth">
+          <div class="ov-scale">
+            <svg viewBox="0 0 44 64" width="44" height="64" aria-label="North arrow">
+              <polygon points="22,3 32,42 22,34 12,42" fill="#111"
+                       stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+              <text x="22" y="60" text-anchor="middle" font-size="18"
+                    font-family="Georgia, 'Times New Roman', serif" font-weight="700"
+                    fill="#111" stroke="#fff" stroke-width="2.4"
+                    paint-order="stroke">N</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="ov ov-legend" id="ovLegend" data-pos="bottom-right">
+          <div class="ov-scale">
+            <div class="legend-box">
+              <div class="legend-title">Comparable Sales</div>
+              <table class="legend-table"><tbody id="legendRows"></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <div id="exportCurtain" hidden>
+          <div class="curtain-inner">
+            <div class="spinner"></div>
+            <div id="curtainMsg">Rendering high-resolution image…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="statusbar">
+      <span id="statusText">Ready</span>
+      <span class="spacer"></span>
+      <span id="coordReadout"></span>
+    </div>
+  </main>
+</div>
+
+<!-- geocode candidate picker -->
+<div id="modalHost" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="modalTitle">Choose the correct location</h3>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div id="toastHost"></div>
+
+<!-- Bundled locally on purpose: no CDN to be blocked by an office firewall. -->
+<script src="assets/vendor/leaflet/leaflet.js"></script>
+<script src="assets/vendor/html2canvas/html2canvas.min.js"></script>
+
+<script src="assets/js/util.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/geocode.js"></script>
+<script src="assets/js/parcels.js"></script>
+<script src="assets/js/mapview.js"></script>
+<script src="assets/js/exporter.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
