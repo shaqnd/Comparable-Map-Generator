@@ -34,7 +34,9 @@ exactly which one an office firewall is blocking.
 
 Type the subject address and press **Enter**. Add comparables one at a time, or open
 **Paste a list of addresses** and drop in a column copied from a spreadsheet — each
-line becomes a numbered comparable and is geocoded automatically.
+line becomes a numbered comparable and is geocoded automatically. **Locate every
+address** looks up anything still missing a pin, which is the one click needed after
+opening a project that carries addresses but no coordinates.
 
 Every address is looked up against **three independent geocoders**:
 
@@ -203,6 +205,26 @@ resolution, which is where print quality is most visible.
 
 ---
 
+## Single-file builds
+
+`tools/build.js` inlines every stylesheet and script into one HTML file — handy for
+emailing, a shared drive, or a machine where nothing can be installed.
+
+```
+node tools/build.js --mode=live                        # dist/comparable-map-standalone.html
+node tools/build.js --mode=demo                        # demo/comparable-map-demo.html
+node tools/build.js --mode=live --project=job.cmap.json --out=dist/job.html
+```
+
+- **live** is the real tool: Esri imagery, three geocoders, county parcel layers.
+- **demo** replaces tiles, geocoding and parcels with offline stand-ins, so the page
+  makes no network requests at all. Useful for showing the workflow on a locked-down
+  network — the imagery is simulated and must never be used in a report.
+- `--project` bakes a project in, so the file opens with the subject and comparables
+  already entered. Addresses arrive without coordinates on purpose and are looked up
+  on first open, in the browser, against the live geocoders — never guessed at build
+  time.
+
 ## Layout
 
 ```
@@ -218,6 +240,8 @@ assets/js/exporter.js          high-resolution rendering
 assets/js/ui.js                sidebar, toolbar, dialogs
 assets/js/app.js               bootstrap
 assets/vendor/                 Leaflet 1.9.4 and html2canvas 1.4.1
+demo/demo-mode.js              offline stand-ins for tiles, geocoding, parcels
+tools/build.js                 single-file build (live or demo)
 ```
 
 Leaflet and html2canvas are bundled locally on purpose — a CDN is one more thing an

@@ -81,6 +81,10 @@
     });
 
     MV.map.on('move zoom viewreset zoomend', MV.updateLeaders);
+    MV.map.on('zoomend resize', function () {
+      MV.autoPlaceLabels();
+      MV.updateLeaders();
+    });
     MV.map.on('click', MV.onMapClick);
     MV.map.on('dblclick', MV.onMapDblClick);
 
@@ -201,7 +205,7 @@
   /* ----------------------------------------------------------------- labels */
 
   function labelHtml(p) {
-    var off = p.labelOffset || defaultOffset(p);
+    var off = activeOffset(p);
     var lines = String(p.labelText || '').split('\n');
     var body = lines.map(function (line, i) {
       var cls = i === 0 ? 'lbl-head' : 'lbl-line';
@@ -220,12 +224,113 @@
     return p.role === 'subject' ? { x: 16, y: -96 } : { x: 16, y: -84 };
   }
 
+  /** The offset in use: hand-placed wins, then auto-placed, then the default. */
+  function activeOffset(p) {
+    return p.labelOffset || p._autoOffset || defaultOffset(p);
+  }
+
+  /* Candidate positions around a pin, in preference order. Each returns the
+     label's top-left relative to the pin, for a label of w x h. */
+  var LABEL_SLOTS = [
+    function (w, h, g) { return { x: g, y: -h - g }; },              // NE
+    function (w, h, g) { return { x: g, y: -h / 2 }; },              // E
+    function (w, h, g) { return { x: -w - g, y: -h - g }; },         // NW
+    function (w, h, g) { return { x: -w - g, y: -h / 2 }; },         // W
+    function (w, h, g) { return { x: -w / 2, y: -h - g * 2 }; },     // N
+    function (w, h, g) { return { x: g, y: g }; },                   // SE
+    function (w, h, g) { return { x: -w - g, y: g }; },              // SW
+    function (w, h, g) { return { x: -w / 2, y: g * 2 }; }           // S
+  ];
+
+  function overlapArea(a, b) {
+    var dx = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    var dy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    return (dx > 0 && dy > 0) ? dx * dy : 0;
+  }
+
+  /**
+   * Places labels that the user has not positioned by hand, choosing the
+   * corner around each pin that collides least with the labels and pins
+   * already placed. Comparables often cluster on one street, and a fixed
+   * offset would stack their labels into an unreadable pile.
+   *
+   * Runs in container pixels, then divides by --ui-scale because the stored
+   * offset is multiplied by it again when rendered.
+   */
+  MV.autoPlaceLabels = function () {
+    var s = Store.state.style;
+    if (!s.showLabels) return;
+
+    var size = MV.map.getSize();
+    var pinS = MV.uiScale * (s.pinScale || 100) / 100;
+    var gap = 10 * MV.uiScale;
+
+    var pinBoxes = [];
+    var items = [];
+
+    Store.located().forEach(function (p) {
+      var pt = MV.map.latLngToContainerPoint([p.lat, p.lng]);
+      pinBoxes.push({ x: pt.x - 15 * pinS, y: pt.y - 44 * pinS, w: 30 * pinS, h: 44 * pinS });
+
+      var entry = MV._layers[p.id];
+      if (!entry || !entry.labelEl) return;
+      var rect = entry.labelEl.getBoundingClientRect();
+      if (!rect.width) return;
+      items.push({ p: p, el: entry.labelEl, pt: pt, w: rect.width, h: rect.height });
+    });
+    if (!items.length) return;
+
+    // Subject first, then comparables in order, so the result is stable.
+    items.sort(function (a, b) {
+      if (a.p.role !== b.p.role) return a.p.role === 'subject' ? -1 : 1;
+      return (a.p.number || 0) - (b.p.number || 0);
+    });
+
+    var placed = [];
+
+    items.forEach(function (it) {
+      // A hand-placed label is fixed; it still blocks the others.
+      if (it.p.labelOffset) {
+        placed.push({
+          x: it.pt.x + it.p.labelOffset.x * MV.uiScale,
+          y: it.pt.y + it.p.labelOffset.y * MV.uiScale,
+          w: it.w, h: it.h
+        });
+        return;
+      }
+
+      var best = null, bestCost = Infinity;
+      LABEL_SLOTS.forEach(function (slot, i) {
+        var o = slot(it.w, it.h, gap);
+        var box = { x: it.pt.x + o.x, y: it.pt.y + o.y, w: it.w, h: it.h };
+
+        var cost = i * 40;                       // mild preference for earlier slots
+        placed.forEach(function (q) { cost += overlapArea(box, q) * 3; });
+        pinBoxes.forEach(function (q) { cost += overlapArea(box, q) * 6; });
+
+        // Keep it inside the frame, with an inset so a label never sits flush
+        // against the edge of a printed exhibit.
+        var pad = 12 * MV.uiScale;
+        var outX = Math.max(0, pad - box.x) + Math.max(0, (box.x + box.w) - (size.x - pad));
+        var outY = Math.max(0, pad - box.y) + Math.max(0, (box.y + box.h) - (size.y - pad));
+        cost += (outX + outY) * 90;
+
+        if (cost < bestCost) { bestCost = cost; best = { o: o, box: box }; }
+      });
+
+      it.p._autoOffset = { x: best.o.x / MV.uiScale, y: best.o.y / MV.uiScale };
+      it.el.style.transform =
+        'translate(calc(var(--ui-scale) * ' + it.p._autoOffset.x + 'px),' +
+                  'calc(var(--ui-scale) * ' + it.p._autoOffset.y + 'px))';
+      placed.push(best.box);
+    });
+  };
+
   /** Container-pixel point at the centre of a property's label box. */
   function labelAnchorPoint(p) {
     var entry = MV._layers[p.id];
     if (!entry || !entry.labelEl) return null;
     var pinPt = MV.map.latLngToContainerPoint([p.lat, p.lng]);
-    var off = p.labelOffset || defaultOffset(p);
     var rect = entry.labelEl.getBoundingClientRect();
     var frameRect = document.getElementById('map').getBoundingClientRect();
     if (!rect.width) return null;
@@ -237,7 +342,6 @@
     var t = 1;
     if (Math.abs(dx) > 0.001) t = Math.min(t, hw / Math.abs(dx));
     if (Math.abs(dy) > 0.001) t = Math.min(t, hh / Math.abs(dy));
-    void off;
     return L.point(cx + dx * t, cy + dy * t);
   }
 
@@ -260,7 +364,7 @@
       moved = false;
       startX = ev.clientX;
       startY = ev.clientY;
-      baseOff = Object.assign({}, p.labelOffset || defaultOffset(p));
+      baseOff = Object.assign({}, activeOffset(p));
       inner.setPointerCapture && ev.pointerId != null && inner.setPointerCapture(ev.pointerId);
       ev.preventDefault();
       ev.stopPropagation();
@@ -469,6 +573,7 @@
 
     drawRings();
     drawConnectors();
+    MV.autoPlaceLabels();
     MV.updateLeaders();
     MV.renderLegend();
     MV.renderTitle();
@@ -877,8 +982,8 @@
     }
     // Extra top/left room so labels, title and legend are not clipped.
     MV.map.fitBounds(L.latLngBounds(pts), {
-      paddingTopLeft: [90, 110],
-      paddingBottomRight: [90, 110],
+      paddingTopLeft: [100, 130],
+      paddingBottomRight: [100, 150],
       animate: false
     });
     return true;

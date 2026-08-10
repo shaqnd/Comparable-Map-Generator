@@ -388,6 +388,45 @@
     }, false);
   }
 
+  /**
+   * Geocode every property that has an address but no location yet, one at a
+   * time so the free providers are not hammered. Used by the button and when a
+   * project arrives carrying addresses only.
+   * @returns {Promise<{located:number, missing:number}>}
+   */
+  UI.locateAllMissing = function () {
+    var pending = Store.all().filter(function (p) {
+      return (p.address || '').trim() && p.lat == null;
+    });
+    if (!pending.length) {
+      UI.status('Every address already has a location.');
+      return Promise.resolve({ located: 0, missing: 0 });
+    }
+
+    UI.status('Locating ' + pending.length +
+              (pending.length === 1 ? ' address…' : ' addresses…'));
+
+    var chain = Promise.resolve();
+    pending.forEach(function (p) {
+      chain = chain.then(function () { return UI.geocodeProperty(p.id, true); });
+    });
+
+    return chain.then(function () {
+      var missing = pending.filter(function (p) {
+        var cur = Store.find(p.id);
+        return cur && cur.lat == null;
+      }).length;
+      CMG.mapview.fitAll();
+      UI.status(missing
+        ? (pending.length - missing) + ' of ' + pending.length + ' located — ' + missing +
+          ' need a pin placed by hand.'
+        : 'All ' + pending.length + ' addresses located. Check each pin on the aerial ' +
+          'before exporting.',
+        missing ? 'warn' : 'ok');
+      return { located: pending.length - missing, missing: missing };
+    });
+  };
+
   UI.pickCandidate = function (p, list, spreadFeet) {
     var rows = list.map(function (c, i) {
       return '<button class="cand" data-i="' + i + '">' +
@@ -782,6 +821,8 @@
       var input = $('#compList .prop-card[data-id="' + c.id + '"] .prop-address');
       if (input) input.focus();
     });
+
+    $('#locateAll').addEventListener('click', function () { UI.locateAllMissing(); });
 
     $('#bulkAdd').addEventListener('click', function () {
       var lines = String($('#bulkText').value || '')
