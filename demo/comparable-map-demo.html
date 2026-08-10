@@ -1344,8 +1344,13 @@ body.is-exporting #mapFrame.export-render {
   --demo-bar-h: 46px;
 }
 
+/* Height must not depend on the viewport here. An embedding host that sizes
+   its frame to the content creates a loop — content height reads the viewport,
+   the viewport is set from the content height — which settles at a few pixels
+   and collapses the map. A fixed height breaks the loop; when the page owns the
+   whole window (opened directly) the standalone rule below fills it instead. */
 html, body {
-  height: 100%;
+  height: auto;
   margin: 0 !important;
   padding: 0 !important;
   background: #eef1f5;
@@ -1396,9 +1401,16 @@ html, body {
 .demo-btn:hover { background: #fff9e8; border-color: var(--demo-mark); }
 .demo-btn:focus-visible { outline: 2px solid var(--demo-mark); outline-offset: 2px; }
 
-/* The application fills whatever is left below the banner. */
-#app { height: calc(100vh - var(--demo-bar-h)); }
-@supports (height: 100dvh) { #app { height: calc(100dvh - var(--demo-bar-h)); } }
+/* Embedded: a definite height the host can measure. */
+#app { height: 760px; }
+
+/* Standalone (opened directly, owning the window): fill it. The class is set
+   from script, since CSS cannot tell an embedded page from a top-level one. */
+.cmg-standalone, .cmg-standalone body { height: 100%; }
+.cmg-standalone #app { height: calc(100vh - var(--demo-bar-h)); }
+@supports (height: 100dvh) {
+  .cmg-standalone #app { height: calc(100dvh - var(--demo-bar-h)); }
+}
 
 /* ---------------------------------------------------- exported-image preview */
 
@@ -5674,6 +5686,9 @@ window.CMG = window.CMG || {};
 
 (function (CMG) {
   'use strict';
+  // Only fill the viewport when this page owns the window. Embedded in a host
+  // that sizes its frame to the content, viewport-relative heights collapse.
+  if (window === window.top) document.documentElement.classList.add('cmg-standalone');
   // Seed the sample project the first time, but never overwrite real work.
   var origInit = CMG.store.init;
   CMG.store.init = function () {

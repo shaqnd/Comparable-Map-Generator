@@ -76,6 +76,9 @@ const PREVIEW = `
 const BOOT = `
 (function (CMG) {
   'use strict';
+  // Only fill the viewport when this page owns the window. Embedded in a host
+  // that sizes its frame to the content, viewport-relative heights collapse.
+  if (window === window.top) document.documentElement.classList.add('cmg-standalone');
   // Seed the sample project the first time, but never overwrite real work.
   var origInit = CMG.store.init;
   CMG.store.init = function () {
