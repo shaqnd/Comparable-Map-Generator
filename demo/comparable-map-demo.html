@@ -1412,9 +1412,22 @@ html, body {
   .cmg-standalone #app { height: calc(100dvh - var(--demo-bar-h)); }
 }
 
+@media (max-width: 860px) {
+  :root { --demo-bar-h: 62px; }
+  #demoBanner { flex-wrap: wrap; align-content: center; padding: 6px 12px; gap: 8px; }
+  .demo-note { white-space: normal; font-size: 12px; flex-basis: 100%; order: 3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+</style>
+
+<style>
 /* ---------------------------------------------------- exported-image preview */
 
-#demoPreview {
+#cmgPreview {
   position: fixed;
   inset: 0;
   z-index: 12000;
@@ -1423,9 +1436,9 @@ html, body {
   place-items: center;
   padding: 24px;
 }
-#demoPreview[hidden] { display: none; }
+#cmgPreview[hidden] { display: none; }
 
-.demo-preview-card {
+.cmg-preview-card {
   background: #ffffff;
   border-radius: 10px;
   box-shadow: 0 24px 60px rgba(12, 18, 26, .45);
@@ -1436,7 +1449,7 @@ html, body {
   overflow: hidden;
 }
 
-.demo-preview-head {
+.cmg-preview-head {
   display: flex;
   align-items: baseline;
   gap: 12px;
@@ -1445,19 +1458,19 @@ html, body {
   color: #16202c;
   font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
-.demo-preview-head strong {
+.cmg-preview-head strong {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 16px;
   font-weight: 700;
 }
-.demo-preview-head span { color: #5a6a7c; }
+.cmg-preview-head span { color: #5a6a7c; }
 
-.demo-preview-body {
+.cmg-preview-body {
   padding: 16px 18px;
   overflow: auto;
   background: repeating-conic-gradient(#e6eaf0 0% 25%, #eef1f5 0% 50%) 50% / 18px 18px;
 }
-.demo-preview-body img {
+.cmg-preview-body img {
   display: block;
   max-width: 100%;
   height: auto;
@@ -1465,7 +1478,7 @@ html, body {
   background: #fff;
 }
 
-.demo-preview-foot {
+.cmg-preview-foot {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1474,9 +1487,9 @@ html, body {
   font: 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   color: #5a6a7c;
 }
-.demo-preview-foot .grow { flex: 1; }
+.cmg-preview-foot .grow { flex: 1; }
 
-.demo-primary {
+.cmg-primary {
   display: inline-block;
   border: 1px solid #1a56db;
   background: #1a56db;
@@ -1487,10 +1500,10 @@ html, body {
   text-decoration: none;
   cursor: pointer;
 }
-.demo-primary:hover { background: #12409f; border-color: #12409f; }
-.demo-primary:focus-visible { outline: 2px solid #d99a1a; outline-offset: 2px; }
+.cmg-primary:hover { background: #12409f; border-color: #12409f; }
+.cmg-primary:focus-visible { outline: 2px solid #d99a1a; outline-offset: 2px; }
 
-.demo-ghost {
+.cmg-ghost {
   border: 1px solid #d8dee7;
   background: #fff;
   color: #16202c;
@@ -1499,17 +1512,8 @@ html, body {
   cursor: pointer;
   font: inherit;
 }
-.demo-ghost:hover { background: #f4f7fb; }
+.cmg-ghost:hover { background: #f4f7fb; }
 
-@media (max-width: 860px) {
-  :root { --demo-bar-h: 62px; }
-  #demoBanner { flex-wrap: wrap; align-content: center; padding: 6px 12px; gap: 8px; }
-  .demo-note { white-space: normal; font-size: 12px; flex-basis: 100%; order: 3; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
-}
 
 </style>
 
@@ -1836,18 +1840,18 @@ html, body {
 <!-- Bundled locally on purpose: no CDN to be blocked by an office firewall. -->
 
 
-<div id="demoPreview" hidden>
-  <div class="demo-preview-card" role="dialog" aria-modal="true" aria-label="Exported image">
-    <div class="demo-preview-head">
-      <strong>Exported image</strong>
-      <span id="demoPreviewMeta"></span>
+<div id="cmgPreview" hidden>
+  <div class="cmg-preview-card" role="dialog" aria-modal="true" aria-label="Comparable sales map">
+    <div class="cmg-preview-head">
+      <strong>Your comparable sales map</strong>
+      <span id="cmgPreviewMeta"></span>
     </div>
-    <div class="demo-preview-body"><img id="demoPreviewImg" alt="Exported comparable sales map"></div>
-    <div class="demo-preview-foot">
-      <span class="grow">In the real tool this downloads straight to your Downloads
-        folder, or copies to the clipboard for pasting into Word.</span>
-      <a class="demo-primary" id="demoPreviewSave" href="#" download>Save image</a>
-      <button class="demo-ghost" id="demoPreviewClose" type="button">Close</button>
+    <div class="cmg-preview-body"><img id="cmgPreviewImg" alt="Comparable sales map"></div>
+    <div class="cmg-preview-foot">
+      <span class="grow">In the real tool this downloads straight to your Downloads folder, or copies to the clipboard for pasting into Word.</span>
+      <button class="cmg-ghost" id="cmgPreviewCopy" type="button">Copy</button>
+      <a class="cmg-primary" id="cmgPreviewSave" href="#" download>Save PNG</a>
+      <button class="cmg-ghost" id="cmgPreviewClose" type="button">Edit the map</button>
     </div>
   </div>
 </div>
@@ -5322,6 +5326,46 @@ window.CMG = window.CMG || {};
 </script>
 
 <script>
+
+(function (CMG) {
+  'use strict';
+  CMG.showPreview = function (canvas) {
+    var host = document.getElementById('cmgPreview');
+    var url = canvas.toDataURL('image/png');
+    document.getElementById('cmgPreviewImg').src = url;
+    var save = document.getElementById('cmgPreviewSave');
+    save.href = url;
+    save.download = CMG.exporter.fileName('png');
+    document.getElementById('cmgPreviewMeta').textContent =
+      canvas.width + ' \u00d7 ' + canvas.height + ' px at ' +
+      CMG.store.state.exportCfg.dpi + ' DPI \u2014 ' +
+      CMG.store.state.exportCfg.w + ' \u00d7 ' + CMG.store.state.exportCfg.h + ' in';
+    host.hidden = false;
+    return canvas;
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var host = document.getElementById('cmgPreview');
+    document.getElementById('cmgPreviewClose').addEventListener('click', function () {
+      host.hidden = true;
+    });
+    host.addEventListener('click', function (ev) { if (ev.target === host) host.hidden = true; });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && !host.hidden) host.hidden = true;
+    });
+    document.getElementById('cmgPreviewCopy').addEventListener('click', function () {
+      var btn = this;
+      var img = document.getElementById('cmgPreviewImg');
+      fetch(img.src).then(function (r) { return r.blob(); }).then(function (blob) {
+        return navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      }).then(function () { btn.textContent = 'Copied'; })
+        .catch(function () { btn.textContent = 'Use Save PNG'; });
+    });
+  });
+})(window.CMG);
+</script>
+
+<script>
 /* Demo mode.
 
    Swaps the three services that need the internet — map tiles, geocoding and
@@ -5758,19 +5802,7 @@ window.CMG = window.CMG || {};
   var renderCanvas = CMG.exporter.renderCanvas;
 
   function present(canvas) {
-    var host = document.getElementById('demoPreview');
-    var slot = document.getElementById('demoPreviewImg');
-    var meta = document.getElementById('demoPreviewMeta');
-    var link = document.getElementById('demoPreviewSave');
-
-    var url = canvas.toDataURL('image/png');
-    slot.src = url;
-    link.href = url;
-    link.download = CMG.exporter.fileName('png');
-    meta.textContent = canvas.width + ' × ' + canvas.height + ' px — rendered at the ' +
-      'full export resolution, exactly as the real tool produces it.';
-    host.hidden = false;
-    return canvas;
+    return CMG.showPreview(canvas);
   }
 
   CMG.exporter.downloadPNG = function (p) {
@@ -5854,16 +5886,6 @@ window.CMG = window.CMG || {};
     document.getElementById('demoReset').addEventListener('click', function () {
       try { localStorage.removeItem(CMG.STORAGE_KEY); } catch (e) { /* sandboxed */ }
       location.reload();
-    });
-    var preview = document.getElementById('demoPreview');
-    document.getElementById('demoPreviewClose').addEventListener('click', function () {
-      preview.hidden = true;
-    });
-    preview.addEventListener('click', function (ev) {
-      if (ev.target === preview) preview.hidden = true;
-    });
-    document.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Escape' && !preview.hidden) preview.hidden = true;
     });
   });
 })(window.CMG);

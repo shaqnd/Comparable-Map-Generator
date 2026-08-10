@@ -32,6 +32,7 @@ process.argv.slice(2).forEach((a) => {
 });
 
 const MODE = args.mode === 'live' ? 'live' : 'demo';
+const AUTORUN = !!args.autorun;
 const OUT = path.resolve(ROOT, args.out ||
   (MODE === 'live' ? 'dist/comparable-map-standalone.html' : 'demo/comparable-map-demo.html'));
 
@@ -73,22 +74,156 @@ const DEMO_BANNER = `
   </span>
 </div>`;
 
-const DEMO_PREVIEW = `
-<div id="demoPreview" hidden>
-  <div class="demo-preview-card" role="dialog" aria-modal="true" aria-label="Exported image">
-    <div class="demo-preview-head">
-      <strong>Exported image</strong>
-      <span id="demoPreviewMeta"></span>
+
+/* Shared export-preview chrome, used by the demo and by one-shot builds. */
+const PREVIEW_CSS = `/* ---------------------------------------------------- exported-image preview */
+
+#cmgPreview {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(22, 26, 32, .78);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+#cmgPreview[hidden] { display: none; }
+
+.cmg-preview-card {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 24px 60px rgba(12, 18, 26, .45);
+  max-width: min(1100px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cmg-preview-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 13px 18px;
+  border-bottom: 1px solid #e4e8ee;
+  color: #16202c;
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+.cmg-preview-head strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+.cmg-preview-head span { color: #5a6a7c; }
+
+.cmg-preview-body {
+  padding: 16px 18px;
+  overflow: auto;
+  background: repeating-conic-gradient(#e6eaf0 0% 25%, #eef1f5 0% 50%) 50% / 18px 18px;
+}
+.cmg-preview-body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  box-shadow: 0 2px 14px rgba(12, 18, 26, .25);
+  background: #fff;
+}
+
+.cmg-preview-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid #e4e8ee;
+  font: 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  color: #5a6a7c;
+}
+.cmg-preview-foot .grow { flex: 1; }
+
+.cmg-primary {
+  display: inline-block;
+  border: 1px solid #1a56db;
+  background: #1a56db;
+  color: #fff;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.cmg-primary:hover { background: #12409f; border-color: #12409f; }
+.cmg-primary:focus-visible { outline: 2px solid #d99a1a; outline-offset: 2px; }
+
+.cmg-ghost {
+  border: 1px solid #d8dee7;
+  background: #fff;
+  color: #16202c;
+  border-radius: 6px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font: inherit;
+}
+.cmg-ghost:hover { background: #f4f7fb; }
+
+`;
+
+function previewMarkup(note) {
+  return `
+<div id="cmgPreview" hidden>
+  <div class="cmg-preview-card" role="dialog" aria-modal="true" aria-label="Comparable sales map">
+    <div class="cmg-preview-head">
+      <strong>Your comparable sales map</strong>
+      <span id="cmgPreviewMeta"></span>
     </div>
-    <div class="demo-preview-body"><img id="demoPreviewImg" alt="Exported comparable sales map"></div>
-    <div class="demo-preview-foot">
-      <span class="grow">In the real tool this downloads straight to your Downloads
-        folder, or copies to the clipboard for pasting into Word.</span>
-      <a class="demo-primary" id="demoPreviewSave" href="#" download>Save image</a>
-      <button class="demo-ghost" id="demoPreviewClose" type="button">Close</button>
+    <div class="cmg-preview-body"><img id="cmgPreviewImg" alt="Comparable sales map"></div>
+    <div class="cmg-preview-foot">
+      <span class="grow">${note}</span>
+      <button class="cmg-ghost" id="cmgPreviewCopy" type="button">Copy</button>
+      <a class="cmg-primary" id="cmgPreviewSave" href="#" download>Save PNG</a>
+      <button class="cmg-ghost" id="cmgPreviewClose" type="button">Edit the map</button>
     </div>
   </div>
 </div>`;
+}
+
+
+const PREVIEW_WIRE = `
+(function (CMG) {
+  'use strict';
+  CMG.showPreview = function (canvas) {
+    var host = document.getElementById('cmgPreview');
+    var url = canvas.toDataURL('image/png');
+    document.getElementById('cmgPreviewImg').src = url;
+    var save = document.getElementById('cmgPreviewSave');
+    save.href = url;
+    save.download = CMG.exporter.fileName('png');
+    document.getElementById('cmgPreviewMeta').textContent =
+      canvas.width + ' \\u00d7 ' + canvas.height + ' px at ' +
+      CMG.store.state.exportCfg.dpi + ' DPI \\u2014 ' +
+      CMG.store.state.exportCfg.w + ' \\u00d7 ' + CMG.store.state.exportCfg.h + ' in';
+    host.hidden = false;
+    return canvas;
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var host = document.getElementById('cmgPreview');
+    document.getElementById('cmgPreviewClose').addEventListener('click', function () {
+      host.hidden = true;
+    });
+    host.addEventListener('click', function (ev) { if (ev.target === host) host.hidden = true; });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && !host.hidden) host.hidden = true;
+    });
+    document.getElementById('cmgPreviewCopy').addEventListener('click', function () {
+      var btn = this;
+      var img = document.getElementById('cmgPreviewImg');
+      fetch(img.src).then(function (r) { return r.blob(); }).then(function (blob) {
+        return navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      }).then(function () { btn.textContent = 'Copied'; })
+        .catch(function () { btn.textContent = 'Use Save PNG'; });
+    });
+  });
+})(window.CMG);`;
 
 const DEMO_BOOT = `
 (function (CMG) {
@@ -115,21 +250,27 @@ const DEMO_BOOT = `
       try { localStorage.removeItem(CMG.STORAGE_KEY); } catch (e) { /* sandboxed */ }
       location.reload();
     });
-    var preview = document.getElementById('demoPreview');
-    document.getElementById('demoPreviewClose').addEventListener('click', function () {
-      preview.hidden = true;
-    });
-    preview.addEventListener('click', function (ev) {
-      if (ev.target === preview) preview.hidden = true;
-    });
-    document.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Escape' && !preview.hidden) preview.hidden = true;
-    });
   });
 })(window.CMG);`;
 
+/* One-shot: frame everything and render the finished image without being asked. */
+const AUTORUN_TAIL = `located.then(function (r) {
+        if (r && r.located === 0 && r.missing > 0) throw new Error('no addresses could be located');
+        CMG.mapview.fitAll();
+        CMG.ui.status('Drawing the map at full resolution\\u2026');
+        return new Promise(function (res) { setTimeout(res, 900); });
+      }).then(function () {
+        return CMG.exporter.renderCanvas(function (m) { CMG.ui.status(m); });
+      }).then(function (canvas) {
+        CMG.showPreview(canvas);
+        CMG.ui.status('Map ready. Check each pin against the aerial before it goes in the report.', 'ok');
+      }).catch(function (err) {
+        CMG.ui.status('Could not finish automatically: ' + err.message +
+                      ' \\u2014 the map is still here to adjust by hand.', 'warn');
+      });`;
+
 /** Live builds get the baked-in project, if one was supplied. */
-function seedBoot(project) {
+function seedBoot(project, autorun) {
   if (!project) return '';
   return `
 (function (CMG) {
@@ -158,7 +299,8 @@ function seedBoot(project) {
       var needs = CMG.store.all().some(function (p) {
         return (p.address || '').trim() && p.lat == null;
       });
-      if (needs) CMG.ui.locateAllMissing();
+      var located = needs ? CMG.ui.locateAllMissing() : Promise.resolve(null);
+      ${autorun ? AUTORUN_TAIL : 'located;'}
     }, 350);
   });
 })(window.CMG);`;
@@ -196,24 +338,34 @@ parts.push('<style>\n' + read('assets/css/app.css') + '\n</style>');
 
 if (MODE === 'demo') {
   parts.push('<style>\n' + read('demo/demo.css') + '\n</style>');
-  parts.push(DEMO_BANNER);
 } else {
   parts.push('<style>' + LIVE_LAYOUT_CSS + '\n</style>');
 }
+const wantsPreview = MODE === 'demo' || AUTORUN;
+if (wantsPreview) parts.push('<style>\n' + PREVIEW_CSS + '\n</style>');
+if (MODE === 'demo') parts.push(DEMO_BANNER);
 
 parts.push(extractBody());
-if (MODE === 'demo') parts.push(DEMO_PREVIEW);
+if (wantsPreview) {
+  parts.push(previewMarkup(MODE === 'demo'
+    ? 'In the real tool this downloads straight to your Downloads folder, or copies ' +
+      'to the clipboard for pasting into Word.'
+    : 'Paste it into your report, or edit the map and export again.'));
+}
+
 
 parts.push('<script>\n' + guard(read('assets/vendor/leaflet/leaflet.js')) + '\n</script>');
 parts.push('<script>\n' + guard(read('assets/vendor/html2canvas/html2canvas.min.js')) + '\n</script>');
 APP_SCRIPTS.forEach((f) => parts.push('<script>\n' + guard(read(f)) + '\n</script>'));
+
+if (wantsPreview) parts.push('<script>\n' + PREVIEW_WIRE + '\n</script>');
 
 if (MODE === 'demo') {
   parts.push('<script>\n' + guard(read('demo/demo-mode.js')) + '\n</script>');
   parts.push('<script>\n' + DEMO_BOOT + '\n</script>');
 } else {
   parts.push('<script>\n' + LIVE_BOOT + '\n</script>');
-  if (project) parts.push('<script>\n' + guard(seedBoot(project)) + '\n</script>');
+  if (project) parts.push('<script>\n' + guard(seedBoot(project, AUTORUN)) + '\n</script>');
 }
 
 parts.push('<script>\n' + guard(read('assets/js/app.js')) + '\n</script>');
@@ -223,4 +375,4 @@ fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, output);
 
 console.log('wrote ' + path.relative(ROOT, OUT) + '  (' + (output.length / 1024).toFixed(0) + ' KB, ' +
-  MODE + ' build' + (project ? ', project baked in' : '') + ')');
+  MODE + ' build' + (project ? ', project baked in' : '') + (AUTORUN ? ', autorun' : '') + ')');

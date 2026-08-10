@@ -434,19 +434,7 @@
   var renderCanvas = CMG.exporter.renderCanvas;
 
   function present(canvas) {
-    var host = document.getElementById('demoPreview');
-    var slot = document.getElementById('demoPreviewImg');
-    var meta = document.getElementById('demoPreviewMeta');
-    var link = document.getElementById('demoPreviewSave');
-
-    var url = canvas.toDataURL('image/png');
-    slot.src = url;
-    link.href = url;
-    link.download = CMG.exporter.fileName('png');
-    meta.textContent = canvas.width + ' × ' + canvas.height + ' px — rendered at the ' +
-      'full export resolution, exactly as the real tool produces it.';
-    host.hidden = false;
-    return canvas;
+    return CMG.showPreview(canvas);
   }
 
   CMG.exporter.downloadPNG = function (p) {

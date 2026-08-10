@@ -214,6 +214,7 @@ emailing, a shared drive, or a machine where nothing can be installed.
 node tools/build.js --mode=live                        # dist/comparable-map-standalone.html
 node tools/build.js --mode=demo                        # demo/comparable-map-demo.html
 node tools/build.js --mode=live --project=job.cmap.json --out=dist/job.html
+node tools/build.js --mode=live --autorun --project=job.cmap.json --out=dist/job.html
 ```
 
 - **live** is the real tool: Esri imagery, three geocoders, county parcel layers.
@@ -224,6 +225,9 @@ node tools/build.js --mode=live --project=job.cmap.json --out=dist/job.html
   already entered. Addresses arrive without coordinates on purpose and are looked up
   on first open, in the browser, against the live geocoders — never guessed at build
   time.
+- `--autorun` goes further: on open it locates every address, frames them, renders the
+  map at the configured size and hands over the finished image with Save and Copy.
+  Hand someone a job file and they get the exhibit without touching the interface.
 
 ## Layout
 
