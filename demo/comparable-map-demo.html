@@ -1397,6 +1397,26 @@ body.is-exporting #mapFrame.export-render {
 #mapCounter:hover { opacity: .9; }
 #mapCounter[hidden] { display: none; }
 
+/* County coverage results */
+.reg-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+}
+.reg-row:last-child { border-bottom: 0; }
+.reg-mark { font-weight: 700; }
+.reg-row.is-ok .reg-mark { color: var(--good); }
+.reg-row.is-bad .reg-mark { color: var(--bad); }
+.reg-name { font-weight: 600; color: var(--ink); }
+.reg-note {
+  color: var(--ink-soft); font-size: 11px; text-align: right;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;
+}
+
 </style>
 
 <style>
@@ -1689,11 +1709,15 @@ html, body {
 
         <div class="panel">
           <div class="panel-head"><h3>Parcels</h3></div>
-          <p class="hint">Pick a parcel service for your county, then use
-            <b>Select parcel</b> on the toolbar and click a property.</p>
+          <p class="hint">Pick your county, then use <b>Select parcel</b> on the
+            toolbar and click a property.</p>
           <label class="field">
-            <span>Parcel service</span>
+            <span>County</span>
             <select id="parcelPreset"></select>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="autoCounty" checked>
+            <span>Pick the county automatically from the subject</span>
           </label>
           <label class="field" id="parcelUrlField">
             <span>ArcGIS layer URL (FeatureServer/MapServer layer)</span>
@@ -1701,10 +1725,26 @@ html, body {
                    placeholder="https://…/arcgis/rest/services/Parcels/FeatureServer/0">
           </label>
           <div class="btn-row">
-            <button id="testParcel" class="btn">Test service</button>
+            <button id="testParcel" class="btn">Test this county</button>
             <button id="saveParcelPreset" class="btn">Save as preset</button>
           </div>
           <div id="parcelStatus" class="status"></div>
+
+          <details class="sub" id="countyRegistry">
+            <summary>County coverage — verify &amp; share</summary>
+            <p class="hint">The shipped URLs are starting points: county GIS
+               endpoints move, and none could be reached from the machine this was
+               built on. One pass here checks all
+               <b id="countyCount">23</b> counties from your network. Fix any that
+               moved, then export the file and share it with the office.</p>
+            <div class="btn-row wrap">
+              <button id="testAllCounties" class="btn btn-primary btn-sm">Test every county</button>
+              <button id="exportRegistry" class="btn btn-sm">Export</button>
+              <button id="importRegistry" class="btn btn-sm">Import</button>
+            </div>
+            <input type="file" id="importRegistryInput" accept=".json,application/json" hidden>
+            <div id="registryResults"></div>
+          </details>
           <label class="check">
             <input type="checkbox" id="toggleParcelFill" checked>
             <span>Shade selected parcels</span>
@@ -2318,6 +2358,93 @@ window.CMG = window.CMG || {};
   /* Below this score a candidate is flagged for the appraiser to confirm. */
   CMG.CONFIDENCE_WARN = 85;
 
+
+  /* ---------------------------------------------------------------- region
+     First release is scoped to the Colorado Front Range and the nearer
+     mountain counties: Wyoming line down to Pueblo, out to Steamboat,
+     Breckenridge and Fairplay. Geocoding is biased to this box and anything
+     landing outside it is flagged rather than silently accepted. */
+  CMG.REGION = {
+    id: 'co-front-range',
+    name: 'Colorado Front Range & mountains',
+    bounds: [[37.85, -107.40], [41.05, -103.80]],
+    center: [39.60, -105.40],
+    zoom: 8
+  };
+
+  /* Colorado is a rectangle, so its bounds are exact. */
+  CMG.STATE_BOUNDS = [[36.992, -109.06], [41.003, -102.04]];
+
+  /* ------------------------------------------------------- county registry
+     Parcel layers for every county in the launch region.
+
+     These URLs are STARTING POINTS. County GIS endpoints move, and they could
+     not be reached from the machine this was built on, so every one is marked
+     unverified until it answers. Run "Test every county" in the Parcels panel
+     to check the whole list from your own network in one pass, correct any
+     that have moved, then export the registry and share the file with the
+     office so nobody repeats the work. */
+  CMG.COUNTIES = [
+    /* ---- Denver metro ---- */
+    { id: 'denver', name: 'Denver', group: 'Denver metro',
+      url: 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/ODC_PARCELS_A/FeatureServer/0' },
+    { id: 'adams', name: 'Adams', group: 'Denver metro',
+      url: 'https://gis.adcogov.org/arcgis/rest/services/Assessor/Parcels/MapServer/0' },
+    { id: 'arapahoe', name: 'Arapahoe', group: 'Denver metro',
+      url: 'https://gis.arapahoegov.com/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'jefferson', name: 'Jefferson', group: 'Denver metro',
+      url: 'https://gis.jeffco.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'douglas', name: 'Douglas', group: 'Denver metro',
+      url: 'https://gis.douglas.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'broomfield', name: 'Broomfield', group: 'Denver metro',
+      url: 'https://gismaps.broomfield.org/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'boulder', name: 'Boulder', group: 'Denver metro',
+      url: 'https://maps.boco.solutions/arcgis/rest/services/Parcels/MapServer/0' },
+
+    /* ---- North to the Wyoming line ---- */
+    { id: 'larimer', name: 'Larimer', group: 'Northern Front Range',
+      url: 'https://gisservices.larimer.org/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'weld', name: 'Weld', group: 'Northern Front Range',
+      url: 'https://gis.weldgov.com/arcgis/rest/services/Parcels/MapServer/0' },
+
+    /* ---- South to Pueblo ---- */
+    { id: 'elpaso', name: 'El Paso', group: 'Southern Front Range',
+      url: 'https://gis.elpasoco.com/arcgis/rest/services/Assessor/Parcels/MapServer/0' },
+    { id: 'pueblo', name: 'Pueblo', group: 'Southern Front Range',
+      url: 'https://gis.pueblocounty.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'teller', name: 'Teller', group: 'Southern Front Range',
+      url: 'https://gis.co.teller.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'elbert', name: 'Elbert', group: 'Southern Front Range',
+      url: 'https://gis.elbertcounty-co.gov/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'fremont', name: 'Fremont', group: 'Southern Front Range',
+      url: 'https://gis.fremontco.com/arcgis/rest/services/Parcels/MapServer/0' },
+
+    /* ---- Mountain counties ---- */
+    { id: 'summit', name: 'Summit', group: 'Mountains', note: 'Breckenridge',
+      url: 'https://gis.summitcountyco.gov/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'park', name: 'Park', group: 'Mountains', note: 'Fairplay',
+      url: 'https://gis.parkco.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'routt', name: 'Routt', group: 'Mountains', note: 'Steamboat Springs',
+      url: 'https://gis.co.routt.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'eagle', name: 'Eagle', group: 'Mountains', note: 'Vail',
+      url: 'https://gis.eaglecounty.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'grand', name: 'Grand', group: 'Mountains', note: 'Winter Park' ,
+      url: 'https://gis.co.grand.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'clearcreek', name: 'Clear Creek', group: 'Mountains', note: 'Idaho Springs',
+      url: 'https://gis.clearcreekcounty.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'gilpin', name: 'Gilpin', group: 'Mountains', note: 'Central City',
+      url: 'https://gis.co.gilpin.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'lake', name: 'Lake', group: 'Mountains', note: 'Leadville',
+      url: 'https://gis.lakecountyco.gov/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'chaffee', name: 'Chaffee', group: 'Mountains', note: 'Salida',
+      url: 'https://gis.chaffeecounty.org/arcgis/rest/services/Parcels/MapServer/0' }
+  ];
+
+  CMG.COUNTY_GROUPS = ['Denver metro', 'Northern Front Range',
+                       'Southern Front Range', 'Mountains'];
+
+  CMG.REGISTRY_KEY = 'cmg.counties.v1';
+
   /* ---------------------------------------------------------- parcel presets
      Starting points only — county GIS endpoints move. Hit "Test service" to
      confirm one before relying on it, edit the URL if it has changed, and
@@ -2478,8 +2605,11 @@ window.CMG = window.CMG || {};
     radiusRings: ''
   };
 
-  /* Denver, CO — a sensible opening view; replaced as soon as anything is geocoded. */
-  CMG.DEFAULT_VIEW = { lat: 39.7392, lng: -104.9903, zoom: 12, basemap: 'aerial', labelOverlay: true };
+  /* Opens on the launch region; replaced as soon as anything is geocoded. */
+  CMG.DEFAULT_VIEW = {
+    lat: CMG.REGION.center[0], lng: CMG.REGION.center[1], zoom: CMG.REGION.zoom,
+    basemap: 'aerial', labelOverlay: true
+  };
 
   CMG.APP_VERSION = '1.0';
 
@@ -3153,6 +3283,17 @@ window.CMG = window.CMG || {};
     approximate: 4
   };
 
+  /** Is a point inside the counties this release covers? */
+  function inRegion(lat, lng) {
+    var b = CMG.REGION.bounds;
+    return lat >= b[0][0] && lat <= b[1][0] && lng >= b[0][1] && lng <= b[1][1];
+  }
+
+  function inState(lat, lng) {
+    var b = CMG.STATE_BOUNDS;
+    return lat >= b[0][0] && lat <= b[1][0] && lng >= b[0][1] && lng <= b[1][1];
+  }
+
   function candidate(o) {
     return {
       lat: o.lat,
@@ -3163,7 +3304,9 @@ window.CMG = window.CMG || {};
       providerName: o.providerName,
       precision: o.precision || 'approximate',
       agreement: 1,
-      agreeWith: []
+      agreeWith: [],
+      inRegion: inRegion(o.lat, o.lng),
+      inState: inState(o.lat, o.lng)
     };
   }
 
@@ -3211,8 +3354,16 @@ window.CMG = window.CMG || {};
   }
 
   function arcgisSearch(q) {
+    // searchExtent biases results to the launch region without excluding
+    // anything outside it — an out-of-region hit is flagged, not hidden.
+    var b = CMG.REGION.bounds;
+    var extent = encodeURIComponent(JSON.stringify({
+      xmin: b[0][1], ymin: b[0][0], xmax: b[1][1], ymax: b[1][0],
+      spatialReference: { wkid: 4326 }
+    }));
     var url = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates' +
               '?f=json&maxLocations=5&outFields=Match_addr,Addr_type' +
+              '&countryCode=USA&searchExtent=' + extent +
               '&singleLine=' + encodeURIComponent(q);
 
     return U.fetchJSON(url, { timeout: 18000 })
@@ -3237,8 +3388,11 @@ window.CMG = window.CMG || {};
   /* ------------------------------------------------------------- Nominatim */
 
   function nominatimSearch(q) {
+    var b = CMG.REGION.bounds;
     var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5' +
-              '&addressdetails=1&q=' + encodeURIComponent(q);
+              '&countrycodes=us&addressdetails=1' +
+              '&viewbox=' + [b[0][1], b[1][0], b[1][1], b[0][0]].join(',') +
+              '&q=' + encodeURIComponent(q);
 
     return throttledNominatim(function () {
       return U.fetchJSON(url, { timeout: 18000 });
@@ -3295,6 +3449,10 @@ window.CMG = window.CMG || {};
     });
 
     merged.sort(function (a, b) {
+      // A match inside the covered counties beats one outside it, whatever it
+      // scored — "1953 Gun Club Rd" exists in several states.
+      if (a.inRegion !== b.inRegion) return a.inRegion ? -1 : 1;
+      if (a.inState !== b.inState) return a.inState ? -1 : 1;
       if (b.agreement !== a.agreement) return b.agreement - a.agreement;
       if (PRECISION_RANK[a.precision] !== PRECISION_RANK[b.precision]) {
         return PRECISION_RANK[a.precision] - PRECISION_RANK[b.precision];
@@ -3305,6 +3463,9 @@ window.CMG = window.CMG || {};
   }
 
   var Geocode = {
+
+    inRegion: inRegion,
+    inState: inState,
 
     /**
      * Look an address up across providers.
@@ -3555,6 +3716,149 @@ window.CMG = window.CMG || {};
         });
     },
 
+
+    /* ------------------------------------------------- county registry */
+
+    /** Saved corrections, merged over the shipped list. */
+    registry: function () {
+      var overrides = {};
+      try {
+        var raw = JSON.parse(localStorage.getItem(CMG.REGISTRY_KEY) || '{}');
+        if (raw && typeof raw === 'object') overrides = raw;
+      } catch (e) { overrides = {}; }
+
+      return CMG.COUNTIES.map(function (c) {
+        var o = overrides[c.id] || {};
+        return {
+          id: c.id, name: c.name, group: c.group, note: c.note,
+          url: o.url != null ? o.url : c.url,
+          verified: !!o.verified,
+          checkedAt: o.checkedAt || null,
+          layerName: o.layerName || '',
+          corrected: o.url != null && o.url !== c.url
+        };
+      });
+    },
+
+    county: function (id) {
+      return Parcels.registry().filter(function (c) { return c.id === id; })[0] || null;
+    },
+
+    setCounty: function (id, patch) {
+      var overrides = {};
+      try { overrides = JSON.parse(localStorage.getItem(CMG.REGISTRY_KEY) || '{}') || {}; }
+      catch (e) { overrides = {}; }
+      overrides[id] = Object.assign({}, overrides[id], patch);
+      try { localStorage.setItem(CMG.REGISTRY_KEY, JSON.stringify(overrides)); }
+      catch (e) { /* quota */ }
+      return Parcels.county(id);
+    },
+
+    /** Whole registry as a file, so one person's verification serves the office. */
+    exportRegistry: function () {
+      return new Blob([JSON.stringify({
+        kind: 'cmg.county-registry',
+        region: CMG.REGION.id,
+        savedAt: new Date().toISOString(),
+        counties: Parcels.registry().map(function (c) {
+          return { id: c.id, name: c.name, url: c.url, verified: c.verified,
+                   layerName: c.layerName, checkedAt: c.checkedAt };
+        })
+      }, null, 2)], { type: 'application/json' });
+    },
+
+    importRegistry: function (text) {
+      var data = JSON.parse(text);
+      var list = (data && data.counties) || [];
+      if (!Array.isArray(list) || !list.length) {
+        throw new Error('No counties in that file.');
+      }
+      var overrides = {};
+      list.forEach(function (c) {
+        if (!c || !c.id) return;
+        overrides[c.id] = {
+          url: c.url, verified: !!c.verified,
+          layerName: c.layerName || '', checkedAt: c.checkedAt || null
+        };
+      });
+      localStorage.setItem(CMG.REGISTRY_KEY, JSON.stringify(overrides));
+      return list.length;
+    },
+
+    /**
+     * Check every county from the browser, a few at a time so a slow county
+     * cannot stall the rest. Results are written back into the registry, so a
+     * pass here is also a record of what was working and when.
+     * @param {function(Object)} onResult called as each county settles
+     */
+    testAll: function (onResult) {
+      var list = Parcels.registry();
+      var queue = list.slice();
+      var results = [];
+      var CONCURRENCY = 4;
+
+      function next() {
+        var c = queue.shift();
+        if (!c) return Promise.resolve();
+        if (!c.url) {
+          var none = { id: c.id, name: c.name, ok: false, error: 'No URL set' };
+          results.push(none);
+          if (onResult) onResult(none);
+          return next();
+        }
+        return Parcels.describe(c.url).then(function (info) {
+          var r = {
+            id: c.id, name: c.name, ok: info.isPolygon, layerName: info.name,
+            fields: info.fields.length,
+            error: info.isPolygon ? null : 'Not a polygon layer (' + info.geometryType + ')'
+          };
+          Parcels.setCounty(c.id, {
+            verified: r.ok, layerName: info.name,
+            checkedAt: new Date().toISOString()
+          });
+          results.push(r);
+          if (onResult) onResult(r);
+        }).catch(function (err) {
+          var r = { id: c.id, name: c.name, ok: false, error: err.message };
+          Parcels.setCounty(c.id, { verified: false, checkedAt: new Date().toISOString() });
+          results.push(r);
+          if (onResult) onResult(r);
+        }).then(next);
+      }
+
+      var runners = [];
+      for (var i = 0; i < CONCURRENCY; i++) runners.push(next());
+      return Promise.all(runners).then(function () { return results; });
+    },
+
+    /**
+     * Which county a point falls in, from the Census geography service —
+     * authoritative, keyless, and the same source the geocoder uses.
+     * Resolves null rather than rejecting; this is a convenience, not a gate.
+     */
+    countyAt: function (lat, lng) {
+      var url = 'https://geocoding.geo.census.gov/geocoder/geographies/coordinates' +
+                '?benchmark=Public_AR_Current&vintage=Current_Current' +
+                '&layers=Counties&format=json' +
+                '&x=' + encodeURIComponent(lng) + '&y=' + encodeURIComponent(lat);
+      return U.fetchJSON(url, { timeout: 15000 }).then(function (d) {
+        var geos = d && d.result && d.result.geographies;
+        var counties = geos && (geos.Counties || geos['Counties']);
+        var name = counties && counties[0] && counties[0].NAME;
+        if (!name) return null;
+        return String(name).replace(/\s+County$/i, '').trim();
+      }).catch(function () { return null; });
+    },
+
+    /** Registry entry whose name matches a county name, if it is in region. */
+    matchCounty: function (countyName) {
+      if (!countyName) return null;
+      var want = String(countyName).toLowerCase().replace(/\s+county$/i, '').trim();
+      return Parcels.registry().filter(function (c) {
+        return c.name.toLowerCase() === want;
+      })[0] || null;
+    },
+
     /* -------------------------------------------------- saved preset library */
 
     loadPresets: function () {
@@ -3564,17 +3868,21 @@ window.CMG = window.CMG || {};
         if (!Array.isArray(saved)) saved = [];
       } catch (e) { saved = []; }
 
-      var builtins = CMG.PARCEL_PRESETS.filter(function (p) {
-        return p.id !== 'custom';
+      var out = [{ id: 'none', name: '— none —', url: '', group: '' }];
+      Parcels.registry().forEach(function (c) {
+        out.push({
+          id: c.id,
+          name: c.name + ' County' + (c.note ? ' (' + c.note + ')' : '') +
+                (c.verified ? '  ✓' : ''),
+          url: c.url,
+          group: c.group,
+          verified: c.verified
+        });
       });
-      var seen = {};
-      var out = [];
-      builtins.concat(saved).forEach(function (p) {
-        if (!p || !p.id || seen[p.id]) return;
-        seen[p.id] = true;
-        out.push({ id: p.id, name: p.name, url: p.url, custom: !!p.custom });
+      saved.forEach(function (p) {
+        if (p && p.id) out.push({ id: p.id, name: p.name, url: p.url, group: 'Saved', custom: true });
       });
-      out.push({ id: 'custom', name: 'Custom URL…', url: '' });
+      out.push({ id: 'custom', name: 'Custom URL…', url: '', group: '' });
       return out;
     },
 
@@ -4946,6 +5254,10 @@ window.CMG = window.CMG || {};
       if (g.spreadFeet != null && g.spreadFeet > 150) {
         bits.push('<span class="loc loc-warn">Providers differ by ' + g.spreadFeet + ' ft — verify</span>');
       }
+      if (p.lat != null && !CMG.geocode.inRegion(p.lat, p.lng)) {
+        bits.push('<span class="loc loc-warn">Outside ' +
+          U.escapeHtml(CMG.REGION.name) + '</span>');
+      }
     } else {
       bits.push('<span class="loc loc-ok">Located</span>');
     }
@@ -5237,6 +5549,7 @@ window.CMG = window.CMG || {};
       var ambiguous = list.length > 1 &&
         (top.score < CMG.CONFIDENCE_WARN ||
          top.precision === 'approximate' || top.precision === 'street' ||
+         !top.inRegion ||
          (res.spreadFeet != null && res.spreadFeet > 300));
 
       if (ambiguous && !silent) {
@@ -5246,6 +5559,7 @@ window.CMG = window.CMG || {};
       }
       applyCandidate(p, top, res.spreadFeet);
       UI.status(describe(p) + ' located — ' + top.label, 'ok');
+      if (p.role === 'subject') UI.autoPickCounty();
     }).catch(function (err) {
       UI.busy[id] = false;
       UI.renderCards();
@@ -5314,6 +5628,7 @@ window.CMG = window.CMG || {};
           U.escapeHtml(CMG.geocode.PRECISION_LABEL[c.precision] || c.precision) +
           ' · confidence ' + c.score + '%' +
           (c.agreement > 1 ? ' · ' + c.agreement + ' sources agree' : '') +
+          (c.inRegion ? '' : ' · <b>outside the covered counties</b>') +
         '</span>' +
         '<span class="cand-coord">' + U.formatLatLng(c.lat, c.lng) + '</span>' +
       '</button>';
@@ -5334,6 +5649,7 @@ window.CMG = window.CMG || {};
             var c = list[Number(b.getAttribute('data-i'))];
             applyCandidate(p, c, spreadFeet);
             UI.closeModal();
+            if (p.role === 'subject') UI.autoPickCounty();
             CMG.mapview.panTo(p.id);
             UI.status(describe(p) + ' set to ' + c.label, 'ok');
           });
@@ -5673,8 +5989,16 @@ window.CMG = window.CMG || {};
   UI.refreshParcelPresets = function () {
     var sel = $('#parcelPreset');
     var presets = CMG.parcels.loadPresets();
-    sel.innerHTML = presets.map(function (p) {
-      return '<option value="' + U.escapeHtml(p.id) + '">' + U.escapeHtml(p.name) + '</option>';
+
+    // Grouped by region so a 23-county list stays scannable.
+    var groups = [''].concat(CMG.COUNTY_GROUPS).concat(['Saved']);
+    sel.innerHTML = groups.map(function (g) {
+      var rows = presets.filter(function (p) { return (p.group || '') === g; });
+      if (!rows.length) return '';
+      var opts = rows.map(function (p) {
+        return '<option value="' + U.escapeHtml(p.id) + '">' + U.escapeHtml(p.name) + '</option>';
+      }).join('');
+      return g ? '<optgroup label="' + U.escapeHtml(g) + '">' + opts + '</optgroup>' : opts;
     }).join('');
     sel.value = Store.state.parcelService.presetId || 'none';
     if (!sel.value) sel.value = 'custom';
@@ -5753,6 +6077,131 @@ window.CMG = window.CMG || {};
       CMG.parcels.savePreset(name.trim(), url);
       UI.refreshParcelPresets();
       UI.status('Preset saved to this browser.', 'ok');
+    });
+  };
+
+
+  /* --------------------------------------------------- county registry UI */
+
+  function registryRow(r) {
+    return '<div class="reg-row' + (r.ok ? ' is-ok' : ' is-bad') + '" data-county="' + r.id + '">' +
+      '<span class="reg-mark">' + (r.ok ? '✓' : '✗') + '</span>' +
+      '<span class="reg-name">' + U.escapeHtml(r.name) + '</span>' +
+      '<span class="reg-note">' + U.escapeHtml(r.ok ? (r.layerName || 'polygon layer')
+                                                    : (r.error || 'unreachable')) + '</span>' +
+      (r.ok ? '' : '<button class="btn btn-sm" data-fix="' + r.id + '">Fix URL</button>') +
+    '</div>';
+  }
+
+  UI.wireCountyRegistry = function () {
+    var out = $('#registryResults');
+    $('#countyCount').textContent = String(CMG.COUNTIES.length);
+
+    $('#testAllCounties').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      var done = 0, total = CMG.COUNTIES.length;
+      out.innerHTML = '<p class="hint"><span class="mini-spin"></span> Testing 0 of ' +
+                      total + '…</p>';
+      var rows = [];
+
+      CMG.parcels.testAll(function (r) {
+        done += 1;
+        rows.push(r);
+        rows.sort(function (a, b) {
+          if (a.ok !== b.ok) return a.ok ? 1 : -1;   // failures first, they need work
+          return a.name.localeCompare(b.name);
+        });
+        out.innerHTML = '<p class="hint">' +
+          (done < total ? '<span class="mini-spin"></span> Testing ' + done + ' of ' + total + '…'
+                        : rows.filter(function (x) { return x.ok; }).length + ' of ' + total +
+                          ' counties reachable') + '</p>' +
+          rows.map(registryRow).join('');
+      }).then(function (all) {
+        btn.disabled = false;
+        var ok = all.filter(function (r) { return r.ok; }).length;
+        UI.refreshParcelPresets();
+        UI.status(ok + ' of ' + all.length + ' county parcel services answered. ' +
+          (ok < all.length ? 'Fix the rest inline, then export to share.' :
+                             'Export the file to share with the office.'),
+          ok === all.length ? 'ok' : 'warn');
+      });
+    });
+
+    out.addEventListener('click', function (ev) {
+      var id = ev.target.getAttribute && ev.target.getAttribute('data-fix');
+      if (!id) return;
+      var county = CMG.parcels.county(id);
+      var url = window.prompt(
+        'ArcGIS parcel layer URL for ' + county.name + ' County\n\n' +
+        'Find it on the county GIS or open-data site; it ends in a layer number.',
+        county.url || '');
+      if (url == null) return;
+      CMG.parcels.setCounty(id, { url: url.trim(), verified: false });
+      UI.refreshParcelPresets();
+      CMG.parcels.describe(url.trim()).then(function (info) {
+        CMG.parcels.setCounty(id, {
+          verified: info.isPolygon, layerName: info.name,
+          checkedAt: new Date().toISOString()
+        });
+        UI.refreshParcelPresets();
+        UI.status(county.name + ': ' + (info.isPolygon ? 'reachable — ' + info.name
+                                                       : 'not a polygon layer'),
+                  info.isPolygon ? 'ok' : 'warn');
+      }).catch(function (e) {
+        UI.status(county.name + ': ' + e.message, 'error');
+      });
+    });
+
+    $('#exportRegistry').addEventListener('click', function () {
+      U.downloadBlob(CMG.parcels.exportRegistry(), 'colorado-county-parcels.json');
+      UI.status('County registry exported — share it with the office.', 'ok');
+    });
+
+    $('#importRegistry').addEventListener('click', function () { $('#importRegistryInput').click(); });
+
+    $('#importRegistryInput').addEventListener('change', function () {
+      var file = this.files && this.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var n = CMG.parcels.importRegistry(String(reader.result));
+          UI.refreshParcelPresets();
+          UI.status(n + ' counties imported.', 'ok');
+        } catch (err) {
+          UI.status('Could not read that registry: ' + err.message, 'error');
+        }
+      };
+      reader.readAsText(file);
+      this.value = '';
+    });
+  };
+
+  /**
+   * Point the parcel service at whichever county the subject sits in. Silent
+   * on failure — it is a convenience, and the manual picker is right there.
+   */
+  UI.autoPickCounty = function () {
+    if (!$('#autoCounty') || !$('#autoCounty').checked) return Promise.resolve(null);
+    var s = Store.state.subject;
+    if (s.lat == null) return Promise.resolve(null);
+
+    return CMG.parcels.countyAt(s.lat, s.lng).then(function (name) {
+      var match = CMG.parcels.matchCounty(name);
+      if (!match) {
+        if (name) {
+          UI.status('Subject is in ' + name + ' County, which is outside the ' +
+                    CMG.REGION.name + ' coverage. Pick a service by hand if you have one.', 'warn');
+        }
+        return null;
+      }
+      if (Store.state.parcelService.presetId === match.id) return match;
+      Store.state.parcelService = { presetId: match.id, url: match.url };
+      Store.saveLocal();
+      UI.refreshParcelPresets();
+      UI.status('Parcel service set to ' + match.name + ' County.', 'ok');
+      return match;
     });
   };
 
@@ -5863,7 +6312,15 @@ window.CMG = window.CMG || {};
     frame.style.height = Math.round(h) + 'px';
 
     if (CMG.mapview.map) {
-      CMG.mapview.map.invalidateSize({ animate: false, pan: false });
+      // invalidateSize with pan:false keeps the top-left corner fixed, not the
+      // centre, so every resize would walk the view sideways by half the size
+      // change. Put the centre back explicitly.
+      var map = CMG.mapview.map;
+      var centre = map.getCenter();
+      var zoom = map.getZoom();
+      map.invalidateSize({ animate: false, pan: false });
+      map.setView(centre, zoom, { animate: false });
+      CMG.mapview.autoPlaceLabels();
       CMG.mapview.updateLeaders();
     }
     UI.updateExportReadout();
@@ -6708,6 +7165,7 @@ window.CMG = window.CMG || {};
     UI.wireStylePanel();
     UI.wireThemePanel();
     UI.wireParcelPanel();
+    UI.wireCountyRegistry();
     UI.wireExportPanel();
     UI.wireDiagnostics();
     UI.wireToolbar();

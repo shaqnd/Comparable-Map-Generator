@@ -63,6 +63,17 @@
     approximate: 4
   };
 
+  /** Is a point inside the counties this release covers? */
+  function inRegion(lat, lng) {
+    var b = CMG.REGION.bounds;
+    return lat >= b[0][0] && lat <= b[1][0] && lng >= b[0][1] && lng <= b[1][1];
+  }
+
+  function inState(lat, lng) {
+    var b = CMG.STATE_BOUNDS;
+    return lat >= b[0][0] && lat <= b[1][0] && lng >= b[0][1] && lng <= b[1][1];
+  }
+
   function candidate(o) {
     return {
       lat: o.lat,
@@ -73,7 +84,9 @@
       providerName: o.providerName,
       precision: o.precision || 'approximate',
       agreement: 1,
-      agreeWith: []
+      agreeWith: [],
+      inRegion: inRegion(o.lat, o.lng),
+      inState: inState(o.lat, o.lng)
     };
   }
 
@@ -121,8 +134,16 @@
   }
 
   function arcgisSearch(q) {
+    // searchExtent biases results to the launch region without excluding
+    // anything outside it — an out-of-region hit is flagged, not hidden.
+    var b = CMG.REGION.bounds;
+    var extent = encodeURIComponent(JSON.stringify({
+      xmin: b[0][1], ymin: b[0][0], xmax: b[1][1], ymax: b[1][0],
+      spatialReference: { wkid: 4326 }
+    }));
     var url = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates' +
               '?f=json&maxLocations=5&outFields=Match_addr,Addr_type' +
+              '&countryCode=USA&searchExtent=' + extent +
               '&singleLine=' + encodeURIComponent(q);
 
     return U.fetchJSON(url, { timeout: 18000 })
@@ -147,8 +168,11 @@
   /* ------------------------------------------------------------- Nominatim */
 
   function nominatimSearch(q) {
+    var b = CMG.REGION.bounds;
     var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5' +
-              '&addressdetails=1&q=' + encodeURIComponent(q);
+              '&countrycodes=us&addressdetails=1' +
+              '&viewbox=' + [b[0][1], b[1][0], b[1][1], b[0][0]].join(',') +
+              '&q=' + encodeURIComponent(q);
 
     return throttledNominatim(function () {
       return U.fetchJSON(url, { timeout: 18000 });
@@ -205,6 +229,10 @@
     });
 
     merged.sort(function (a, b) {
+      // A match inside the covered counties beats one outside it, whatever it
+      // scored — "1953 Gun Club Rd" exists in several states.
+      if (a.inRegion !== b.inRegion) return a.inRegion ? -1 : 1;
+      if (a.inState !== b.inState) return a.inState ? -1 : 1;
       if (b.agreement !== a.agreement) return b.agreement - a.agreement;
       if (PRECISION_RANK[a.precision] !== PRECISION_RANK[b.precision]) {
         return PRECISION_RANK[a.precision] - PRECISION_RANK[b.precision];
@@ -215,6 +243,9 @@
   }
 
   var Geocode = {
+
+    inRegion: inRegion,
+    inState: inState,
 
     /**
      * Look an address up across providers.

@@ -81,6 +81,10 @@
       if (g.spreadFeet != null && g.spreadFeet > 150) {
         bits.push('<span class="loc loc-warn">Providers differ by ' + g.spreadFeet + ' ft — verify</span>');
       }
+      if (p.lat != null && !CMG.geocode.inRegion(p.lat, p.lng)) {
+        bits.push('<span class="loc loc-warn">Outside ' +
+          U.escapeHtml(CMG.REGION.name) + '</span>');
+      }
     } else {
       bits.push('<span class="loc loc-ok">Located</span>');
     }
@@ -372,6 +376,7 @@
       var ambiguous = list.length > 1 &&
         (top.score < CMG.CONFIDENCE_WARN ||
          top.precision === 'approximate' || top.precision === 'street' ||
+         !top.inRegion ||
          (res.spreadFeet != null && res.spreadFeet > 300));
 
       if (ambiguous && !silent) {
@@ -381,6 +386,7 @@
       }
       applyCandidate(p, top, res.spreadFeet);
       UI.status(describe(p) + ' located — ' + top.label, 'ok');
+      if (p.role === 'subject') UI.autoPickCounty();
     }).catch(function (err) {
       UI.busy[id] = false;
       UI.renderCards();
@@ -449,6 +455,7 @@
           U.escapeHtml(CMG.geocode.PRECISION_LABEL[c.precision] || c.precision) +
           ' · confidence ' + c.score + '%' +
           (c.agreement > 1 ? ' · ' + c.agreement + ' sources agree' : '') +
+          (c.inRegion ? '' : ' · <b>outside the covered counties</b>') +
         '</span>' +
         '<span class="cand-coord">' + U.formatLatLng(c.lat, c.lng) + '</span>' +
       '</button>';
@@ -469,6 +476,7 @@
             var c = list[Number(b.getAttribute('data-i'))];
             applyCandidate(p, c, spreadFeet);
             UI.closeModal();
+            if (p.role === 'subject') UI.autoPickCounty();
             CMG.mapview.panTo(p.id);
             UI.status(describe(p) + ' set to ' + c.label, 'ok');
           });
@@ -808,8 +816,16 @@
   UI.refreshParcelPresets = function () {
     var sel = $('#parcelPreset');
     var presets = CMG.parcels.loadPresets();
-    sel.innerHTML = presets.map(function (p) {
-      return '<option value="' + U.escapeHtml(p.id) + '">' + U.escapeHtml(p.name) + '</option>';
+
+    // Grouped by region so a 23-county list stays scannable.
+    var groups = [''].concat(CMG.COUNTY_GROUPS).concat(['Saved']);
+    sel.innerHTML = groups.map(function (g) {
+      var rows = presets.filter(function (p) { return (p.group || '') === g; });
+      if (!rows.length) return '';
+      var opts = rows.map(function (p) {
+        return '<option value="' + U.escapeHtml(p.id) + '">' + U.escapeHtml(p.name) + '</option>';
+      }).join('');
+      return g ? '<optgroup label="' + U.escapeHtml(g) + '">' + opts + '</optgroup>' : opts;
     }).join('');
     sel.value = Store.state.parcelService.presetId || 'none';
     if (!sel.value) sel.value = 'custom';
@@ -888,6 +904,131 @@
       CMG.parcels.savePreset(name.trim(), url);
       UI.refreshParcelPresets();
       UI.status('Preset saved to this browser.', 'ok');
+    });
+  };
+
+
+  /* --------------------------------------------------- county registry UI */
+
+  function registryRow(r) {
+    return '<div class="reg-row' + (r.ok ? ' is-ok' : ' is-bad') + '" data-county="' + r.id + '">' +
+      '<span class="reg-mark">' + (r.ok ? '✓' : '✗') + '</span>' +
+      '<span class="reg-name">' + U.escapeHtml(r.name) + '</span>' +
+      '<span class="reg-note">' + U.escapeHtml(r.ok ? (r.layerName || 'polygon layer')
+                                                    : (r.error || 'unreachable')) + '</span>' +
+      (r.ok ? '' : '<button class="btn btn-sm" data-fix="' + r.id + '">Fix URL</button>') +
+    '</div>';
+  }
+
+  UI.wireCountyRegistry = function () {
+    var out = $('#registryResults');
+    $('#countyCount').textContent = String(CMG.COUNTIES.length);
+
+    $('#testAllCounties').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      var done = 0, total = CMG.COUNTIES.length;
+      out.innerHTML = '<p class="hint"><span class="mini-spin"></span> Testing 0 of ' +
+                      total + '…</p>';
+      var rows = [];
+
+      CMG.parcels.testAll(function (r) {
+        done += 1;
+        rows.push(r);
+        rows.sort(function (a, b) {
+          if (a.ok !== b.ok) return a.ok ? 1 : -1;   // failures first, they need work
+          return a.name.localeCompare(b.name);
+        });
+        out.innerHTML = '<p class="hint">' +
+          (done < total ? '<span class="mini-spin"></span> Testing ' + done + ' of ' + total + '…'
+                        : rows.filter(function (x) { return x.ok; }).length + ' of ' + total +
+                          ' counties reachable') + '</p>' +
+          rows.map(registryRow).join('');
+      }).then(function (all) {
+        btn.disabled = false;
+        var ok = all.filter(function (r) { return r.ok; }).length;
+        UI.refreshParcelPresets();
+        UI.status(ok + ' of ' + all.length + ' county parcel services answered. ' +
+          (ok < all.length ? 'Fix the rest inline, then export to share.' :
+                             'Export the file to share with the office.'),
+          ok === all.length ? 'ok' : 'warn');
+      });
+    });
+
+    out.addEventListener('click', function (ev) {
+      var id = ev.target.getAttribute && ev.target.getAttribute('data-fix');
+      if (!id) return;
+      var county = CMG.parcels.county(id);
+      var url = window.prompt(
+        'ArcGIS parcel layer URL for ' + county.name + ' County\n\n' +
+        'Find it on the county GIS or open-data site; it ends in a layer number.',
+        county.url || '');
+      if (url == null) return;
+      CMG.parcels.setCounty(id, { url: url.trim(), verified: false });
+      UI.refreshParcelPresets();
+      CMG.parcels.describe(url.trim()).then(function (info) {
+        CMG.parcels.setCounty(id, {
+          verified: info.isPolygon, layerName: info.name,
+          checkedAt: new Date().toISOString()
+        });
+        UI.refreshParcelPresets();
+        UI.status(county.name + ': ' + (info.isPolygon ? 'reachable — ' + info.name
+                                                       : 'not a polygon layer'),
+                  info.isPolygon ? 'ok' : 'warn');
+      }).catch(function (e) {
+        UI.status(county.name + ': ' + e.message, 'error');
+      });
+    });
+
+    $('#exportRegistry').addEventListener('click', function () {
+      U.downloadBlob(CMG.parcels.exportRegistry(), 'colorado-county-parcels.json');
+      UI.status('County registry exported — share it with the office.', 'ok');
+    });
+
+    $('#importRegistry').addEventListener('click', function () { $('#importRegistryInput').click(); });
+
+    $('#importRegistryInput').addEventListener('change', function () {
+      var file = this.files && this.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var n = CMG.parcels.importRegistry(String(reader.result));
+          UI.refreshParcelPresets();
+          UI.status(n + ' counties imported.', 'ok');
+        } catch (err) {
+          UI.status('Could not read that registry: ' + err.message, 'error');
+        }
+      };
+      reader.readAsText(file);
+      this.value = '';
+    });
+  };
+
+  /**
+   * Point the parcel service at whichever county the subject sits in. Silent
+   * on failure — it is a convenience, and the manual picker is right there.
+   */
+  UI.autoPickCounty = function () {
+    if (!$('#autoCounty') || !$('#autoCounty').checked) return Promise.resolve(null);
+    var s = Store.state.subject;
+    if (s.lat == null) return Promise.resolve(null);
+
+    return CMG.parcels.countyAt(s.lat, s.lng).then(function (name) {
+      var match = CMG.parcels.matchCounty(name);
+      if (!match) {
+        if (name) {
+          UI.status('Subject is in ' + name + ' County, which is outside the ' +
+                    CMG.REGION.name + ' coverage. Pick a service by hand if you have one.', 'warn');
+        }
+        return null;
+      }
+      if (Store.state.parcelService.presetId === match.id) return match;
+      Store.state.parcelService = { presetId: match.id, url: match.url };
+      Store.saveLocal();
+      UI.refreshParcelPresets();
+      UI.status('Parcel service set to ' + match.name + ' County.', 'ok');
+      return match;
     });
   };
 
@@ -998,7 +1139,15 @@
     frame.style.height = Math.round(h) + 'px';
 
     if (CMG.mapview.map) {
-      CMG.mapview.map.invalidateSize({ animate: false, pan: false });
+      // invalidateSize with pan:false keeps the top-left corner fixed, not the
+      // centre, so every resize would walk the view sideways by half the size
+      // change. Put the centre back explicitly.
+      var map = CMG.mapview.map;
+      var centre = map.getCenter();
+      var zoom = map.getZoom();
+      map.invalidateSize({ animate: false, pan: false });
+      map.setView(centre, zoom, { animate: false });
+      CMG.mapview.autoPlaceLabels();
       CMG.mapview.updateLeaders();
     }
     UI.updateExportReadout();

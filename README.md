@@ -70,9 +70,33 @@ dims busy imagery so the pins and text read clearly in print.
 
 ### 3. Parcels
 
-Under **Map → Parcels**, pick your county's parcel service and press **Test service** —
-it reports whether the layer is reachable, whether it holds polygons, and which
-attribute fields it found for address and parcel ID.
+This release covers the **Colorado Front Range and nearer mountain counties** — the
+Wyoming line down to Pueblo, west to Steamboat, Breckenridge and Fairplay. 23 counties
+ship in the picker, grouped by region:
+
+| Group | Counties |
+|---|---|
+| Denver metro | Denver, Adams, Arapahoe, Jefferson, Douglas, Broomfield, Boulder |
+| Northern Front Range | Larimer, Weld |
+| Southern Front Range | El Paso, Pueblo, Teller, Elbert, Fremont |
+| Mountains | Summit, Park, Routt, Eagle, Grand, Clear Creek, Gilpin, Lake, Chaffee |
+
+Address lookup is biased to this box, and a match landing outside it is flagged in the
+sidebar rather than silently accepted — "1953 Gun Club Rd" exists in several states.
+
+**The county is picked for you** from the subject's location, via the Census geography
+service. Untick *Pick the county automatically* to choose by hand.
+
+> **Verify the county list before you rely on it.** County GIS endpoints move, and none
+> of them could be reached from the machine this was built on, so every URL ships
+> unverified. **Map → Parcels → County coverage → Test every county** checks all 23 from
+> your own network in one pass, four at a time. Failures list first with a **Fix URL**
+> button; paste the corrected endpoint and it re-tests immediately. Then **Export** the
+> registry and share the file — one person's verification serves the whole office, and
+> **Import** loads it on everyone else's machine.
+
+**Test this county** reports whether the selected layer is reachable, whether it holds
+polygons, and which attribute fields it found for address and parcel ID.
 
 Then click **Select parcel** on the toolbar and click a property. The boundary is
 drawn on the map and attached to whichever property is selected, along with its APN,

@@ -106,6 +106,93 @@
   /* Below this score a candidate is flagged for the appraiser to confirm. */
   CMG.CONFIDENCE_WARN = 85;
 
+
+  /* ---------------------------------------------------------------- region
+     First release is scoped to the Colorado Front Range and the nearer
+     mountain counties: Wyoming line down to Pueblo, out to Steamboat,
+     Breckenridge and Fairplay. Geocoding is biased to this box and anything
+     landing outside it is flagged rather than silently accepted. */
+  CMG.REGION = {
+    id: 'co-front-range',
+    name: 'Colorado Front Range & mountains',
+    bounds: [[37.85, -107.40], [41.05, -103.80]],
+    center: [39.60, -105.40],
+    zoom: 8
+  };
+
+  /* Colorado is a rectangle, so its bounds are exact. */
+  CMG.STATE_BOUNDS = [[36.992, -109.06], [41.003, -102.04]];
+
+  /* ------------------------------------------------------- county registry
+     Parcel layers for every county in the launch region.
+
+     These URLs are STARTING POINTS. County GIS endpoints move, and they could
+     not be reached from the machine this was built on, so every one is marked
+     unverified until it answers. Run "Test every county" in the Parcels panel
+     to check the whole list from your own network in one pass, correct any
+     that have moved, then export the registry and share the file with the
+     office so nobody repeats the work. */
+  CMG.COUNTIES = [
+    /* ---- Denver metro ---- */
+    { id: 'denver', name: 'Denver', group: 'Denver metro',
+      url: 'https://services1.arcgis.com/zdB7qR0BtYrg0Xpl/arcgis/rest/services/ODC_PARCELS_A/FeatureServer/0' },
+    { id: 'adams', name: 'Adams', group: 'Denver metro',
+      url: 'https://gis.adcogov.org/arcgis/rest/services/Assessor/Parcels/MapServer/0' },
+    { id: 'arapahoe', name: 'Arapahoe', group: 'Denver metro',
+      url: 'https://gis.arapahoegov.com/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'jefferson', name: 'Jefferson', group: 'Denver metro',
+      url: 'https://gis.jeffco.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'douglas', name: 'Douglas', group: 'Denver metro',
+      url: 'https://gis.douglas.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'broomfield', name: 'Broomfield', group: 'Denver metro',
+      url: 'https://gismaps.broomfield.org/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'boulder', name: 'Boulder', group: 'Denver metro',
+      url: 'https://maps.boco.solutions/arcgis/rest/services/Parcels/MapServer/0' },
+
+    /* ---- North to the Wyoming line ---- */
+    { id: 'larimer', name: 'Larimer', group: 'Northern Front Range',
+      url: 'https://gisservices.larimer.org/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'weld', name: 'Weld', group: 'Northern Front Range',
+      url: 'https://gis.weldgov.com/arcgis/rest/services/Parcels/MapServer/0' },
+
+    /* ---- South to Pueblo ---- */
+    { id: 'elpaso', name: 'El Paso', group: 'Southern Front Range',
+      url: 'https://gis.elpasoco.com/arcgis/rest/services/Assessor/Parcels/MapServer/0' },
+    { id: 'pueblo', name: 'Pueblo', group: 'Southern Front Range',
+      url: 'https://gis.pueblocounty.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'teller', name: 'Teller', group: 'Southern Front Range',
+      url: 'https://gis.co.teller.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'elbert', name: 'Elbert', group: 'Southern Front Range',
+      url: 'https://gis.elbertcounty-co.gov/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'fremont', name: 'Fremont', group: 'Southern Front Range',
+      url: 'https://gis.fremontco.com/arcgis/rest/services/Parcels/MapServer/0' },
+
+    /* ---- Mountain counties ---- */
+    { id: 'summit', name: 'Summit', group: 'Mountains', note: 'Breckenridge',
+      url: 'https://gis.summitcountyco.gov/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'park', name: 'Park', group: 'Mountains', note: 'Fairplay',
+      url: 'https://gis.parkco.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'routt', name: 'Routt', group: 'Mountains', note: 'Steamboat Springs',
+      url: 'https://gis.co.routt.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'eagle', name: 'Eagle', group: 'Mountains', note: 'Vail',
+      url: 'https://gis.eaglecounty.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'grand', name: 'Grand', group: 'Mountains', note: 'Winter Park' ,
+      url: 'https://gis.co.grand.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'clearcreek', name: 'Clear Creek', group: 'Mountains', note: 'Idaho Springs',
+      url: 'https://gis.clearcreekcounty.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'gilpin', name: 'Gilpin', group: 'Mountains', note: 'Central City',
+      url: 'https://gis.co.gilpin.co.us/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'lake', name: 'Lake', group: 'Mountains', note: 'Leadville',
+      url: 'https://gis.lakecountyco.gov/arcgis/rest/services/Parcels/MapServer/0' },
+    { id: 'chaffee', name: 'Chaffee', group: 'Mountains', note: 'Salida',
+      url: 'https://gis.chaffeecounty.org/arcgis/rest/services/Parcels/MapServer/0' }
+  ];
+
+  CMG.COUNTY_GROUPS = ['Denver metro', 'Northern Front Range',
+                       'Southern Front Range', 'Mountains'];
+
+  CMG.REGISTRY_KEY = 'cmg.counties.v1';
+
   /* ---------------------------------------------------------- parcel presets
      Starting points only — county GIS endpoints move. Hit "Test service" to
      confirm one before relying on it, edit the URL if it has changed, and
@@ -266,8 +353,11 @@
     radiusRings: ''
   };
 
-  /* Denver, CO — a sensible opening view; replaced as soon as anything is geocoded. */
-  CMG.DEFAULT_VIEW = { lat: 39.7392, lng: -104.9903, zoom: 12, basemap: 'aerial', labelOverlay: true };
+  /* Opens on the launch region; replaced as soon as anything is geocoded. */
+  CMG.DEFAULT_VIEW = {
+    lat: CMG.REGION.center[0], lng: CMG.REGION.center[1], zoom: CMG.REGION.zoom,
+    basemap: 'aerial', labelOverlay: true
+  };
 
   CMG.APP_VERSION = '1.0';
 

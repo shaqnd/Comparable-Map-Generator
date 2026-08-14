@@ -159,6 +159,149 @@
         });
     },
 
+
+    /* ------------------------------------------------- county registry */
+
+    /** Saved corrections, merged over the shipped list. */
+    registry: function () {
+      var overrides = {};
+      try {
+        var raw = JSON.parse(localStorage.getItem(CMG.REGISTRY_KEY) || '{}');
+        if (raw && typeof raw === 'object') overrides = raw;
+      } catch (e) { overrides = {}; }
+
+      return CMG.COUNTIES.map(function (c) {
+        var o = overrides[c.id] || {};
+        return {
+          id: c.id, name: c.name, group: c.group, note: c.note,
+          url: o.url != null ? o.url : c.url,
+          verified: !!o.verified,
+          checkedAt: o.checkedAt || null,
+          layerName: o.layerName || '',
+          corrected: o.url != null && o.url !== c.url
+        };
+      });
+    },
+
+    county: function (id) {
+      return Parcels.registry().filter(function (c) { return c.id === id; })[0] || null;
+    },
+
+    setCounty: function (id, patch) {
+      var overrides = {};
+      try { overrides = JSON.parse(localStorage.getItem(CMG.REGISTRY_KEY) || '{}') || {}; }
+      catch (e) { overrides = {}; }
+      overrides[id] = Object.assign({}, overrides[id], patch);
+      try { localStorage.setItem(CMG.REGISTRY_KEY, JSON.stringify(overrides)); }
+      catch (e) { /* quota */ }
+      return Parcels.county(id);
+    },
+
+    /** Whole registry as a file, so one person's verification serves the office. */
+    exportRegistry: function () {
+      return new Blob([JSON.stringify({
+        kind: 'cmg.county-registry',
+        region: CMG.REGION.id,
+        savedAt: new Date().toISOString(),
+        counties: Parcels.registry().map(function (c) {
+          return { id: c.id, name: c.name, url: c.url, verified: c.verified,
+                   layerName: c.layerName, checkedAt: c.checkedAt };
+        })
+      }, null, 2)], { type: 'application/json' });
+    },
+
+    importRegistry: function (text) {
+      var data = JSON.parse(text);
+      var list = (data && data.counties) || [];
+      if (!Array.isArray(list) || !list.length) {
+        throw new Error('No counties in that file.');
+      }
+      var overrides = {};
+      list.forEach(function (c) {
+        if (!c || !c.id) return;
+        overrides[c.id] = {
+          url: c.url, verified: !!c.verified,
+          layerName: c.layerName || '', checkedAt: c.checkedAt || null
+        };
+      });
+      localStorage.setItem(CMG.REGISTRY_KEY, JSON.stringify(overrides));
+      return list.length;
+    },
+
+    /**
+     * Check every county from the browser, a few at a time so a slow county
+     * cannot stall the rest. Results are written back into the registry, so a
+     * pass here is also a record of what was working and when.
+     * @param {function(Object)} onResult called as each county settles
+     */
+    testAll: function (onResult) {
+      var list = Parcels.registry();
+      var queue = list.slice();
+      var results = [];
+      var CONCURRENCY = 4;
+
+      function next() {
+        var c = queue.shift();
+        if (!c) return Promise.resolve();
+        if (!c.url) {
+          var none = { id: c.id, name: c.name, ok: false, error: 'No URL set' };
+          results.push(none);
+          if (onResult) onResult(none);
+          return next();
+        }
+        return Parcels.describe(c.url).then(function (info) {
+          var r = {
+            id: c.id, name: c.name, ok: info.isPolygon, layerName: info.name,
+            fields: info.fields.length,
+            error: info.isPolygon ? null : 'Not a polygon layer (' + info.geometryType + ')'
+          };
+          Parcels.setCounty(c.id, {
+            verified: r.ok, layerName: info.name,
+            checkedAt: new Date().toISOString()
+          });
+          results.push(r);
+          if (onResult) onResult(r);
+        }).catch(function (err) {
+          var r = { id: c.id, name: c.name, ok: false, error: err.message };
+          Parcels.setCounty(c.id, { verified: false, checkedAt: new Date().toISOString() });
+          results.push(r);
+          if (onResult) onResult(r);
+        }).then(next);
+      }
+
+      var runners = [];
+      for (var i = 0; i < CONCURRENCY; i++) runners.push(next());
+      return Promise.all(runners).then(function () { return results; });
+    },
+
+    /**
+     * Which county a point falls in, from the Census geography service —
+     * authoritative, keyless, and the same source the geocoder uses.
+     * Resolves null rather than rejecting; this is a convenience, not a gate.
+     */
+    countyAt: function (lat, lng) {
+      var url = 'https://geocoding.geo.census.gov/geocoder/geographies/coordinates' +
+                '?benchmark=Public_AR_Current&vintage=Current_Current' +
+                '&layers=Counties&format=json' +
+                '&x=' + encodeURIComponent(lng) + '&y=' + encodeURIComponent(lat);
+      return U.fetchJSON(url, { timeout: 15000 }).then(function (d) {
+        var geos = d && d.result && d.result.geographies;
+        var counties = geos && (geos.Counties || geos['Counties']);
+        var name = counties && counties[0] && counties[0].NAME;
+        if (!name) return null;
+        return String(name).replace(/\s+County$/i, '').trim();
+      }).catch(function () { return null; });
+    },
+
+    /** Registry entry whose name matches a county name, if it is in region. */
+    matchCounty: function (countyName) {
+      if (!countyName) return null;
+      var want = String(countyName).toLowerCase().replace(/\s+county$/i, '').trim();
+      return Parcels.registry().filter(function (c) {
+        return c.name.toLowerCase() === want;
+      })[0] || null;
+    },
+
     /* -------------------------------------------------- saved preset library */
 
     loadPresets: function () {
@@ -168,17 +311,21 @@
         if (!Array.isArray(saved)) saved = [];
       } catch (e) { saved = []; }
 
-      var builtins = CMG.PARCEL_PRESETS.filter(function (p) {
-        return p.id !== 'custom';
+      var out = [{ id: 'none', name: '— none —', url: '', group: '' }];
+      Parcels.registry().forEach(function (c) {
+        out.push({
+          id: c.id,
+          name: c.name + ' County' + (c.note ? ' (' + c.note + ')' : '') +
+                (c.verified ? '  ✓' : ''),
+          url: c.url,
+          group: c.group,
+          verified: c.verified
+        });
       });
-      var seen = {};
-      var out = [];
-      builtins.concat(saved).forEach(function (p) {
-        if (!p || !p.id || seen[p.id]) return;
-        seen[p.id] = true;
-        out.push({ id: p.id, name: p.name, url: p.url, custom: !!p.custom });
+      saved.forEach(function (p) {
+        if (p && p.id) out.push({ id: p.id, name: p.name, url: p.url, group: 'Saved', custom: true });
       });
-      out.push({ id: 'custom', name: 'Custom URL…', url: '' });
+      out.push({ id: 'custom', name: 'Custom URL…', url: '', group: '' });
       return out;
     },
 

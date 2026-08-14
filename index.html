@@ -98,11 +98,15 @@
 
         <div class="panel">
           <div class="panel-head"><h3>Parcels</h3></div>
-          <p class="hint">Pick a parcel service for your county, then use
-            <b>Select parcel</b> on the toolbar and click a property.</p>
+          <p class="hint">Pick your county, then use <b>Select parcel</b> on the
+            toolbar and click a property.</p>
           <label class="field">
-            <span>Parcel service</span>
+            <span>County</span>
             <select id="parcelPreset"></select>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="autoCounty" checked>
+            <span>Pick the county automatically from the subject</span>
           </label>
           <label class="field" id="parcelUrlField">
             <span>ArcGIS layer URL (FeatureServer/MapServer layer)</span>
@@ -110,10 +114,26 @@
                    placeholder="https://…/arcgis/rest/services/Parcels/FeatureServer/0">
           </label>
           <div class="btn-row">
-            <button id="testParcel" class="btn">Test service</button>
+            <button id="testParcel" class="btn">Test this county</button>
             <button id="saveParcelPreset" class="btn">Save as preset</button>
           </div>
           <div id="parcelStatus" class="status"></div>
+
+          <details class="sub" id="countyRegistry">
+            <summary>County coverage — verify &amp; share</summary>
+            <p class="hint">The shipped URLs are starting points: county GIS
+               endpoints move, and none could be reached from the machine this was
+               built on. One pass here checks all
+               <b id="countyCount">23</b> counties from your network. Fix any that
+               moved, then export the file and share it with the office.</p>
+            <div class="btn-row wrap">
+              <button id="testAllCounties" class="btn btn-primary btn-sm">Test every county</button>
+              <button id="exportRegistry" class="btn btn-sm">Export</button>
+              <button id="importRegistry" class="btn btn-sm">Import</button>
+            </div>
+            <input type="file" id="importRegistryInput" accept=".json,application/json" hidden>
+            <div id="registryResults"></div>
+          </details>
           <label class="check">
             <input type="checkbox" id="toggleParcelFill" checked>
             <span>Shade selected parcels</span>

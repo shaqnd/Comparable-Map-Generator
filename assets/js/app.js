@@ -22,6 +22,7 @@
     UI.wireStylePanel();
     UI.wireThemePanel();
     UI.wireParcelPanel();
+    UI.wireCountyRegistry();
     UI.wireExportPanel();
     UI.wireDiagnostics();
     UI.wireToolbar();

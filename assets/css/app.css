@@ -728,3 +728,23 @@ body.is-exporting #mapFrame.export-render {
 }
 #mapCounter:hover { opacity: .9; }
 #mapCounter[hidden] { display: none; }
+
+/* County coverage results */
+.reg-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+}
+.reg-row:last-child { border-bottom: 0; }
+.reg-mark { font-weight: 700; }
+.reg-row.is-ok .reg-mark { color: var(--good); }
+.reg-row.is-bad .reg-mark { color: var(--bad); }
+.reg-name { font-weight: 600; color: var(--ink); }
+.reg-note {
+  color: var(--ink-soft); font-size: 11px; text-align: right;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;
+}
