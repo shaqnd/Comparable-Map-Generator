@@ -26,6 +26,7 @@
     UI.wireDiagnostics();
     UI.wireToolbar();
     UI.wireKeyboard();
+    CMG.counter.wire();
 
     /* Redraw whenever the project changes. */
     Store.subscribe(function (reason) {

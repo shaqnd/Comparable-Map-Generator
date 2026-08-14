@@ -51,6 +51,7 @@
     blankProject: function () {
       return {
         version: CMG.PROJECT_VERSION,
+        id: U.uid('map'),           // stable across saves; the counter dedupes on it
         title: 'Comparable Sales Map',
         subtitle: '',
         exportName: '',
@@ -69,6 +70,7 @@
       if (!p || typeof p !== 'object') return null;
       var base = Store.blankProject();
       var out = Object.assign({}, base, p);
+      out.id = p.id || base.id;
       out.style = Object.assign({}, base.style, p.style || {});
 
       // Projects saved before themes existed carried three loose colours.

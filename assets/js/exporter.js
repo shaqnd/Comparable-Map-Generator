@@ -122,6 +122,9 @@
         })
         .then(function (canvas) {
           leaveExportMode();
+          // Counted here rather than in the download handlers, so a map made
+          // through any route — PNG, JPG, clipboard, one-shot — is counted once.
+          if (CMG.counter) CMG.counter.recordRender(Store.state.id);
           return canvas;
         })
         .catch(function (err) {

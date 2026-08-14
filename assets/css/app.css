@@ -714,3 +714,17 @@ body.is-exporting #mapFrame.export-render {
 }
 
 #themeStatus:empty { display: none; }
+
+/* Maps-made counter — present, but not asking for attention. */
+#mapCounter {
+  font-size: 11px;
+  color: var(--ink-soft);
+  opacity: .45;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+  cursor: default;
+  user-select: none;
+  transition: opacity .15s;
+}
+#mapCounter:hover { opacity: .9; }
+#mapCounter[hidden] { display: none; }

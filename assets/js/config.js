@@ -269,6 +269,15 @@
   /* Denver, CO — a sensible opening view; replaced as soon as anything is geocoded. */
   CMG.DEFAULT_VIEW = { lat: 39.7392, lng: -104.9903, zoom: 12, basemap: 'aerial', labelOverlay: true };
 
+  CMG.APP_VERSION = '1.0';
+
+  /* Maps-made counter. Local only: leave the endpoint empty and nothing is ever
+     sent anywhere. Set it to a URL that accepts a JSON POST and each newly
+     created map sends one content-free tick — no addresses, no client data —
+     which is what a platform-wide total would later be built from. */
+  CMG.COUNTER_KEY = 'cmg.stats.v1';
+  CMG.COUNTER_ENDPOINT = '';
+
   CMG.STORAGE_KEY = 'cmg.project.v1';
   CMG.PRESET_KEY = 'cmg.parcelPresets.v1';
   CMG.PROJECT_VERSION = 1;

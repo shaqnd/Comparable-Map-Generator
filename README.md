@@ -176,6 +176,19 @@ hand to a colleague, and **Open file** to load it back.
 
 `Ctrl+Z` undoes structural changes — deletions, moves, geocodes, parcel edits.
 
+### 8. Maps made
+
+A quiet figure sits at the right of the status bar, counting the maps this install
+has produced. A map counts once, the first time it is rendered for output —
+re-exporting the same job at a different size is the same map — so the number stays
+honest. Click it for the breakdown.
+
+It is local by default and nothing leaves the machine. Setting `CMG.COUNTER_ENDPOINT`
+in `assets/js/config.js` to a URL that accepts a JSON POST makes each newly created map
+send one content-free tick — timestamp, an anonymous install id, the running total and
+the app version. No addresses, no client names, no project data, ever. That is the hook
+a platform-wide total would later be built on.
+
 ---
 
 ## Keyboard shortcuts
