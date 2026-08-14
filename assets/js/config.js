@@ -366,6 +366,7 @@
      created map sends one content-free tick — no addresses, no client data —
      which is what a platform-wide total would later be built from. */
   CMG.COUNTER_KEY = 'cmg.stats.v1';
+  CMG.FIRSTRUN_KEY = 'cmg.seenIntro.v1';
   CMG.COUNTER_ENDPOINT = '';
 
   CMG.STORAGE_KEY = 'cmg.project.v1';

@@ -1417,6 +1417,90 @@ body.is-exporting #mapFrame.export-render {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;
 }
 
+/* ───────────────────── toolbar icons & focus states ───────────────────── */
+
+.tool-ico { display: inline-flex; align-items: center; flex: none; }
+.tool-ico svg { width: 15px; height: 15px; display: block; }
+
+/* One visible focus ring everywhere a keyboard can land. */
+.btn:focus-visible,
+.tool:focus-visible,
+.tab:focus-visible,
+.icon-btn:focus-visible,
+.choice:focus-visible,
+.cand:focus-visible,
+.demo-btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.tool.is-active:focus-visible { outline-color: #fff; outline-offset: -3px; }
+
+.mode-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ────────────────────────── first-run guidance ────────────────────────── */
+
+#canvasArea { position: relative; }
+
+#firstRun {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 600;
+  pointer-events: none;   /* the map underneath stays draggable */
+}
+#firstRun[hidden] { display: none; }
+
+.fr-card {
+  pointer-events: auto;
+  max-width: 430px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px 24px;
+  box-shadow: 0 12px 40px rgba(12, 20, 30, .22);
+}
+.fr-card h2 {
+  margin: 0 0 12px;
+  font: 700 19px/1.25 Georgia, "Times New Roman", serif;
+  color: var(--ink);
+}
+.fr-steps {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.fr-steps b { font-weight: 600; }
+.fr-steps i { font-style: normal; color: var(--ink-soft); }
+.fr-region {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--line-soft);
+  padding-top: 11px;
+}
+.fr-card .btn { width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
 </style>
 
 <style>
@@ -1711,23 +1795,36 @@ html, body { height: auto; margin: 0; padding: 0; background: #eef1f5; }
     <div id="toolbar">
       <div class="tool-group">
         <button class="tool is-active" id="modePan" data-mode="pan" title="Pan and select (V)">
-          <span class="tool-ico">✥</span> Pan</button>
+          <span class="tool-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v12M2 8h12"/><path d="M8 2 6 4M8 2l2 2M8 14l-2-2M8 14l2-2M2 8l2-2M2 8l2 2M14 8l-2-2M14 8l-2 2"/></svg></span> Pan</button>
         <button class="tool" id="modeParcel" data-mode="parcel" title="Click a property to select its parcel (P)">
-          <span class="tool-ico">▨</span> Select parcel</button>
+          <span class="tool-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.8 8 2.5l5.5 2.3v6.4L8 13.5l-5.5-2.3z"/><path d="M8 2.5v11M2.5 8h11" stroke-opacity=".45"/></svg></span> Select parcel</button>
         <button class="tool" id="modeDraw" data-mode="draw" title="Trace a boundary by hand (D)">
-          <span class="tool-ico">✎</span> Draw boundary</button>
+          <span class="tool-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.5l.8-3 7.4-7.4a1.6 1.6 0 0 1 2.3 2.3L5.6 12.7z"/><path d="M9.6 4.2l2.2 2.2"/></svg></span> Draw boundary</button>
         <button class="tool" id="modePlace" data-mode="place" title="Click the map to place the next pin (M)">
-          <span class="tool-ico">⌖</span> Place pin</button>
+          <span class="tool-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14.2s4.3-5 4.3-7.6a4.3 4.3 0 1 0-8.6 0C3.7 9.2 8 14.2 8 14.2z"/><circle cx="8" cy="6.5" r="1.5"/></svg></span> Place pin</button>
       </div>
       <div class="tool-group">
-        <button class="tool" id="btnFitAll" title="Fit everything in view">Fit all</button>
-        <button class="tool" id="btnUndo" title="Undo (Ctrl+Z)">Undo</button>
+        <button class="tool" id="btnFitAll" title="Fit everything in view"><span class="tool-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M14 6V2.5h-3.5M2.5 10v3.5H6M14 10v3.5h-3.5"/></svg></span> Fit all</button>
+        <button class="tool" id="btnUndo" title="Undo (Ctrl+Z)"><span class="tool-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 8.2h6.6a3.4 3.4 0 1 1 0 6.8H7"/><path d="M5.8 5.6 3.2 8.2l2.6 2.6"/></svg></span> Undo</button>
       </div>
       <div class="spacer"></div>
       <div id="modeHint" class="mode-hint">Drag to pan · scroll to zoom · drag a pin or label to move it</div>
     </div>
 
     <div id="canvasArea">
+      <div id="firstRun" hidden>
+        <div class="fr-card">
+          <h2>Build a comparable sales map</h2>
+          <ol class="fr-steps">
+            <li><b>Type the subject address</b> on the left and press Enter.</li>
+            <li><b>Paste your comparables</b> — one address per line — under
+                <i>Paste a list of addresses</i>.</li>
+            <li><b>Check each pin</b> on the aerial, then export at report size.</li>
+          </ol>
+          <p class="fr-region" id="firstRunRegion"></p>
+          <button class="btn btn-primary" id="firstRunDismiss" type="button">Got it</button>
+        </div>
+      </div>
       <!-- everything inside #mapFrame is what gets exported -->
       <div id="mapFrame">
         <div id="map"></div>
@@ -2408,6 +2505,7 @@ window.CMG = window.CMG || {};
      created map sends one content-free tick — no addresses, no client data —
      which is what a platform-wide total would later be built from. */
   CMG.COUNTER_KEY = 'cmg.stats.v1';
+  CMG.FIRSTRUN_KEY = 'cmg.seenIntro.v1';
   CMG.COUNTER_ENDPOINT = '';
 
   CMG.STORAGE_KEY = 'cmg.project.v1';
@@ -2496,14 +2594,23 @@ window.CMG = window.CMG || {};
     return T.colorFor(p, theme);
   };
 
+  /* What each "auto" token inherits. 'item' means the property being drawn —
+     its parcel outline and leader line belong to it, which is the binding that
+     lets the legend work without callouts on the map. Anything not listed
+     falls back to the subject colour. */
+  var AUTO_SOURCE = {
+    leader: 'item',
+    parcelStroke: 'item',
+    titleAccent: 'subject',
+    ring: 'subject'
+  };
+
   /** Tokens that may say "auto" and inherit another colour. */
   T.resolve = function (key, theme, itemColor) {
     theme = theme || CMG.store.state.theme;
     var v = theme.tokens[key];
     if (v !== 'auto') return v;
-    if (key === 'leader') return itemColor || theme.tokens.subject;
-    if (key === 'titleAccent') return theme.tokens.subject;
-    if (key === 'ring') return theme.tokens.subject;
+    if (AUTO_SOURCE[key] === 'item' && itemColor) return itemColor;
     return theme.tokens.subject;
   };
 
@@ -2828,7 +2935,7 @@ window.CMG = window.CMG || {};
     /* Snapshot before a destructive edit so Ctrl+Z can put it back. */
     pushUndo: function () {
       try {
-        Store._undo.push(JSON.stringify(Store.state));
+        Store._undo.push(Store.serialise());
         if (Store._undo.length > 40) Store._undo.shift();
       } catch (e) { /* a snapshot we cannot take is not worth failing the edit for */ }
     },
@@ -2857,8 +2964,9 @@ window.CMG = window.CMG || {};
 
     /* ------------------------------------------------------------- mutations */
 
-    addComp: function (address) {
-      Store.pushUndo();
+    /** @param {boolean} [batched] caller owns the undo snapshot for the batch */
+    addComp: function (address, batched) {
+      if (!batched) Store.pushUndo();
       var c = blankProperty('comp', Store.state.comps.length + 1);
       c.address = address || '';
       Store.state.comps.push(c);
@@ -2887,10 +2995,25 @@ window.CMG = window.CMG || {};
 
     renumber: function () {
       Store.state.comps.forEach(function (c, i) {
+        var was = c.number;
         c.number = i + 1;
-        if (!c.labelCustom) Store.refreshLabel(c);
+        if (!c.labelCustom) { Store.refreshLabel(c); return; }
+        // A hand-written label is the appraiser's text and stays theirs, but a
+        // heading that names the old number would now contradict the pin.
+        if (was !== c.number) Store.renumberLabel(c, was);
       });
       if (!Store.state.subject.labelCustom) Store.refreshLabel(Store.state.subject);
+    },
+
+    /** Rewrite only a leading "COMPARABLE <n>" heading, leaving the rest alone. */
+    renumberLabel: function (p, oldNumber) {
+      var lines = String(p.labelText || '').split('\n');
+      if (!lines.length) return;
+      var head = new RegExp('^(\\s*COMPARABLE\\s+)' + oldNumber + '(\\s*)$', 'i');
+      if (head.test(lines[0])) {
+        lines[0] = lines[0].replace(head, '$1' + p.number + '$2');
+        p.labelText = lines.join('\n');
+      }
     },
 
     setLocation: function (id, lat, lng, geocode, pinned) {
@@ -2974,14 +3097,22 @@ window.CMG = window.CMG || {};
 
     /* ----------------------------------------------------------- persistence */
 
+    /* Underscore-prefixed fields are working state — auto-placed label offsets,
+       for instance — and have no business in a saved job. */
+    serialise: function (indent) {
+      return JSON.stringify(Store.state, function (key, value) {
+        return key.charAt(0) === '_' ? undefined : value;
+      }, indent);
+    },
+
     saveLocal: U.debounce(function () {
       try {
-        localStorage.setItem(CMG.STORAGE_KEY, JSON.stringify(Store.state));
+        localStorage.setItem(CMG.STORAGE_KEY, Store.serialise());
       } catch (e) { /* private browsing or quota — the file save still works */ }
     }, 400),
 
     toFile: function () {
-      return new Blob([JSON.stringify(Store.state, null, 2)], { type: 'application/json' });
+      return new Blob([Store.serialise(2)], { type: 'application/json' });
     },
 
     fromFile: function (text) {
@@ -4495,6 +4626,10 @@ window.CMG = window.CMG || {};
     tbody.innerHTML = rows.join('');
     document.querySelector('#ovLegend .legend-title').textContent =
       Store.state.comps.length ? 'Legend' : 'Subject';
+
+    // An empty legend is just a floating box with a heading — hide it until it
+    // has something to say, or a blank map exports with furniture on it.
+    document.getElementById('ovLegend').hidden = !s.showLegend || !rows.length;
   };
 
   /* ------------------------------------------------------------ interaction */
@@ -4514,10 +4649,10 @@ window.CMG = window.CMG || {};
   };
 
   var MODE_HINTS = {
-    pan: 'Drag to pan · scroll to zoom · drag a pin or label to move it · double-click a label to edit',
-    parcel: 'Click a property to pull its parcel boundary from the county service',
-    draw: 'Click to trace a boundary · double-click or press Enter to finish · Esc to cancel',
-    place: 'Click the map to place the selected pin'
+    pan: 'Drag a pin or label to move it · double-click a label to edit',
+    parcel: 'Click a property to pull its parcel boundary',
+    draw: 'Click each corner · Enter to finish · Esc to cancel',
+    place: 'Click the map to place the pin'
   };
 
   MV.select = function (id) {
@@ -5163,6 +5298,7 @@ window.CMG = window.CMG || {};
   }
 
   UI.renderCards = function () {
+    UI.updateFirstRun();
     $('#subjectCard').innerHTML = cardHtml(Store.state.subject);
     $('#compList').innerHTML = Store.state.comps.map(cardHtml).join('') ||
       '<p class="empty">No comparables yet. Add one below, or paste a list of addresses.</p>';
@@ -6186,7 +6322,7 @@ window.CMG = window.CMG || {};
       if (!lines.length) { UI.status('Paste one address per line first.', 'warn'); return; }
 
       Store.pushUndo();
-      var added = lines.map(function (line) { return Store.addComp(line); });
+      var added = lines.map(function (line) { return Store.addComp(line, true); });
       $('#bulkText').value = '';
       UI.renderCards();
       UI.status('Geocoding ' + added.length + ' addresses…');
@@ -6272,6 +6408,35 @@ window.CMG = window.CMG || {};
         out.innerHTML = rows.join('');
       });
     });
+  };
+
+
+  /* ------------------------------------------------------- first-run guide */
+
+  UI.wireFirstRun = function () {
+    var host = $('#firstRun');
+    if (!host) return;
+
+    $('#firstRunRegion').textContent =
+      'This release covers ' + CMG.REGION.name + ' — ' +
+      CMG.COUNTIES.length + ' counties.';
+
+    $('#firstRunDismiss').addEventListener('click', function () {
+      try { localStorage.setItem(CMG.FIRSTRUN_KEY, '1'); } catch (e) { /* private mode */ }
+      host.hidden = true;
+    });
+    UI.updateFirstRun();
+  };
+
+  /** Shown only on a genuinely empty map, and only until it is dismissed. */
+  UI.updateFirstRun = function () {
+    var host = $('#firstRun');
+    if (!host) return;
+    var dismissed = false;
+    try { dismissed = localStorage.getItem(CMG.FIRSTRUN_KEY) === '1'; } catch (e) { dismissed = false; }
+    var empty = !Store.located().length && !Store.state.comps.length &&
+                !(Store.state.subject.address || '').trim();
+    host.hidden = dismissed || !empty;
   };
 
   /* ------------------------------------------------------------------ tabs */
@@ -6403,13 +6568,27 @@ window.CMG = window.CMG || {};
     UI.wireToolbar();
     UI.wireKeyboard();
     CMG.counter.wire();
+    UI.wireFirstRun();
 
-    /* Redraw whenever the project changes. */
+    /* Redraw whenever the project changes.
+
+       Typing a field or dragging a colour fires a change per keystroke, and
+       each redraw tears down and rebuilds every marker and label. Coalescing
+       into one frame turns a burst of edits into a single repaint. */
+    var pending = null;
     Store.subscribe(function (reason) {
-      CMG.mapview.render();
-      if (reason !== 'style' && !UI.suppressCards) UI.renderCards();
-      if (reason === 'theme' || reason === 'all') UI.renderCards();
-      if (reason === 'all') syncControlsFromState();
+      if (!pending) pending = { cards: false, controls: false };
+      if (reason !== 'style' || reason === 'all') pending.cards = true;
+      if (reason === 'all') pending.controls = true;
+
+      if (pending.frame) return;
+      pending.frame = requestAnimationFrame(function () {
+        var todo = pending;
+        pending = null;
+        CMG.mapview.render();
+        if (todo.cards && !UI.suppressCards) UI.renderCards();
+        if (todo.controls) syncControlsFromState();
+      });
     });
 
     UI.applyFrameSize();

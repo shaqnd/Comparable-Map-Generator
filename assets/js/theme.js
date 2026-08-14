@@ -75,14 +75,23 @@
     return T.colorFor(p, theme);
   };
 
+  /* What each "auto" token inherits. 'item' means the property being drawn —
+     its parcel outline and leader line belong to it, which is the binding that
+     lets the legend work without callouts on the map. Anything not listed
+     falls back to the subject colour. */
+  var AUTO_SOURCE = {
+    leader: 'item',
+    parcelStroke: 'item',
+    titleAccent: 'subject',
+    ring: 'subject'
+  };
+
   /** Tokens that may say "auto" and inherit another colour. */
   T.resolve = function (key, theme, itemColor) {
     theme = theme || CMG.store.state.theme;
     var v = theme.tokens[key];
     if (v !== 'auto') return v;
-    if (key === 'leader') return itemColor || theme.tokens.subject;
-    if (key === 'titleAccent') return theme.tokens.subject;
-    if (key === 'ring') return theme.tokens.subject;
+    if (AUTO_SOURCE[key] === 'item' && itemColor) return itemColor;
     return theme.tokens.subject;
   };
 

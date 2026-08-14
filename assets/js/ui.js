@@ -200,6 +200,7 @@
   }
 
   UI.renderCards = function () {
+    UI.updateFirstRun();
     $('#subjectCard').innerHTML = cardHtml(Store.state.subject);
     $('#compList').innerHTML = Store.state.comps.map(cardHtml).join('') ||
       '<p class="empty">No comparables yet. Add one below, or paste a list of addresses.</p>';
@@ -1223,7 +1224,7 @@
       if (!lines.length) { UI.status('Paste one address per line first.', 'warn'); return; }
 
       Store.pushUndo();
-      var added = lines.map(function (line) { return Store.addComp(line); });
+      var added = lines.map(function (line) { return Store.addComp(line, true); });
       $('#bulkText').value = '';
       UI.renderCards();
       UI.status('Geocoding ' + added.length + ' addresses…');
@@ -1309,6 +1310,35 @@
         out.innerHTML = rows.join('');
       });
     });
+  };
+
+
+  /* ------------------------------------------------------- first-run guide */
+
+  UI.wireFirstRun = function () {
+    var host = $('#firstRun');
+    if (!host) return;
+
+    $('#firstRunRegion').textContent =
+      'This release covers ' + CMG.REGION.name + ' — ' +
+      CMG.COUNTIES.length + ' counties.';
+
+    $('#firstRunDismiss').addEventListener('click', function () {
+      try { localStorage.setItem(CMG.FIRSTRUN_KEY, '1'); } catch (e) { /* private mode */ }
+      host.hidden = true;
+    });
+    UI.updateFirstRun();
+  };
+
+  /** Shown only on a genuinely empty map, and only until it is dismissed. */
+  UI.updateFirstRun = function () {
+    var host = $('#firstRun');
+    if (!host) return;
+    var dismissed = false;
+    try { dismissed = localStorage.getItem(CMG.FIRSTRUN_KEY) === '1'; } catch (e) { dismissed = false; }
+    var empty = !Store.located().length && !Store.state.comps.length &&
+                !(Store.state.subject.address || '').trim();
+    host.hidden = dismissed || !empty;
   };
 
   /* ------------------------------------------------------------------ tabs */

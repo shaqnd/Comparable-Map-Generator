@@ -116,7 +116,7 @@
     /* Snapshot before a destructive edit so Ctrl+Z can put it back. */
     pushUndo: function () {
       try {
-        Store._undo.push(JSON.stringify(Store.state));
+        Store._undo.push(Store.serialise());
         if (Store._undo.length > 40) Store._undo.shift();
       } catch (e) { /* a snapshot we cannot take is not worth failing the edit for */ }
     },
@@ -145,8 +145,9 @@
 
     /* ------------------------------------------------------------- mutations */
 
-    addComp: function (address) {
-      Store.pushUndo();
+    /** @param {boolean} [batched] caller owns the undo snapshot for the batch */
+    addComp: function (address, batched) {
+      if (!batched) Store.pushUndo();
       var c = blankProperty('comp', Store.state.comps.length + 1);
       c.address = address || '';
       Store.state.comps.push(c);
@@ -175,10 +176,25 @@
 
     renumber: function () {
       Store.state.comps.forEach(function (c, i) {
+        var was = c.number;
         c.number = i + 1;
-        if (!c.labelCustom) Store.refreshLabel(c);
+        if (!c.labelCustom) { Store.refreshLabel(c); return; }
+        // A hand-written label is the appraiser's text and stays theirs, but a
+        // heading that names the old number would now contradict the pin.
+        if (was !== c.number) Store.renumberLabel(c, was);
       });
       if (!Store.state.subject.labelCustom) Store.refreshLabel(Store.state.subject);
+    },
+
+    /** Rewrite only a leading "COMPARABLE <n>" heading, leaving the rest alone. */
+    renumberLabel: function (p, oldNumber) {
+      var lines = String(p.labelText || '').split('\n');
+      if (!lines.length) return;
+      var head = new RegExp('^(\\s*COMPARABLE\\s+)' + oldNumber + '(\\s*)$', 'i');
+      if (head.test(lines[0])) {
+        lines[0] = lines[0].replace(head, '$1' + p.number + '$2');
+        p.labelText = lines.join('\n');
+      }
     },
 
     setLocation: function (id, lat, lng, geocode, pinned) {
@@ -262,14 +278,22 @@
 
     /* ----------------------------------------------------------- persistence */
 
+    /* Underscore-prefixed fields are working state — auto-placed label offsets,
+       for instance — and have no business in a saved job. */
+    serialise: function (indent) {
+      return JSON.stringify(Store.state, function (key, value) {
+        return key.charAt(0) === '_' ? undefined : value;
+      }, indent);
+    },
+
     saveLocal: U.debounce(function () {
       try {
-        localStorage.setItem(CMG.STORAGE_KEY, JSON.stringify(Store.state));
+        localStorage.setItem(CMG.STORAGE_KEY, Store.serialise());
       } catch (e) { /* private browsing or quota — the file save still works */ }
     }, 400),
 
     toFile: function () {
-      return new Blob([JSON.stringify(Store.state, null, 2)], { type: 'application/json' });
+      return new Blob([Store.serialise(2)], { type: 'application/json' });
     },
 
     fromFile: function (text) {

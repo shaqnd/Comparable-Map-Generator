@@ -28,13 +28,27 @@
     UI.wireToolbar();
     UI.wireKeyboard();
     CMG.counter.wire();
+    UI.wireFirstRun();
 
-    /* Redraw whenever the project changes. */
+    /* Redraw whenever the project changes.
+
+       Typing a field or dragging a colour fires a change per keystroke, and
+       each redraw tears down and rebuilds every marker and label. Coalescing
+       into one frame turns a burst of edits into a single repaint. */
+    var pending = null;
     Store.subscribe(function (reason) {
-      CMG.mapview.render();
-      if (reason !== 'style' && !UI.suppressCards) UI.renderCards();
-      if (reason === 'theme' || reason === 'all') UI.renderCards();
-      if (reason === 'all') syncControlsFromState();
+      if (!pending) pending = { cards: false, controls: false };
+      if (reason !== 'style' || reason === 'all') pending.cards = true;
+      if (reason === 'all') pending.controls = true;
+
+      if (pending.frame) return;
+      pending.frame = requestAnimationFrame(function () {
+        var todo = pending;
+        pending = null;
+        CMG.mapview.render();
+        if (todo.cards && !UI.suppressCards) UI.renderCards();
+        if (todo.controls) syncControlsFromState();
+      });
     });
 
     UI.applyFrameSize();

@@ -778,6 +778,10 @@
     tbody.innerHTML = rows.join('');
     document.querySelector('#ovLegend .legend-title').textContent =
       Store.state.comps.length ? 'Legend' : 'Subject';
+
+    // An empty legend is just a floating box with a heading — hide it until it
+    // has something to say, or a blank map exports with furniture on it.
+    document.getElementById('ovLegend').hidden = !s.showLegend || !rows.length;
   };
 
   /* ------------------------------------------------------------ interaction */
@@ -797,10 +801,10 @@
   };
 
   var MODE_HINTS = {
-    pan: 'Drag to pan · scroll to zoom · drag a pin or label to move it · double-click a label to edit',
-    parcel: 'Click a property to pull its parcel boundary from the county service',
-    draw: 'Click to trace a boundary · double-click or press Enter to finish · Esc to cancel',
-    place: 'Click the map to place the selected pin'
+    pan: 'Drag a pin or label to move it · double-click a label to edit',
+    parcel: 'Click a property to pull its parcel boundary',
+    draw: 'Click each corner · Enter to finish · Esc to cancel',
+    place: 'Click the map to place the pin'
   };
 
   MV.select = function (id) {
