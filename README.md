@@ -108,9 +108,34 @@ fields. **Reset label** puts it back on automatic.
 Drag any label to reposition it; a leader line follows it back to the pin. Label
 offsets are stored in the project, so they survive zooming, saving and reloading.
 
-Also under **Map**: pin and subject colours, label text size, pin size, leader lines,
-subject-to-comparable connector lines, and radius rings around the subject (enter
-`0.5, 1, 2` for half-, one- and two-mile rings).
+Also under **Map**: label text size, pin size, leader lines, subject-to-comparable
+connector lines, and radius rings around the subject (enter `0.5, 1, 2` for half-,
+one- and two-mile rings). Colours live on their own tab.
+
+### 4b. Themes — making the map yours
+
+Every colour the map can draw is a named token on the **Theme** tab: subject, the
+comparable palette, pin outline and centre, parcel shading, label background, text and
+border, leader lines, radius rings, connector lines, the title block, the legend, the
+north arrow and the scale bar. Each takes a colour and an opacity.
+
+- **Comparable palette** — comparables take these colours in order, then cycle. Add or
+  remove entries; any single comp can be overridden from its card on the Properties tab.
+- **Parcels wear their property's colour**, so a shaded parcel and its pin and its
+  legend row are visibly the same thing without a callout on the map.
+- **Auto** tokens inherit rather than hold a colour — a leader line follows the item it
+  points at, the title accent follows the subject. Untick Auto to pin a colour instead.
+- **Pin centre → None** gives a solid disc with a white numeral instead of the badge
+  look. The numeral colour is chosen for contrast, so it stays readable either way.
+
+**Save theme** puts it in a library that persists in the browser and appears in the
+*Start from* list on every future job. **Export file** writes a `.cmtheme.json` to send
+to a colleague, so a whole office can share one house style. Saving over a built-in
+forks a copy — the four supplied themes (Classic appraisal, Colorado Atlas, Muted
+single accent, Monochrome) always stay as shipped.
+
+The theme travels inside the `.cmap.json` too, so reopening an old job reproduces
+exactly the exhibit that went into that report.
 
 ### 5. Map furniture
 

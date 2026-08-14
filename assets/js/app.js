@@ -20,6 +20,7 @@
     UI.wireCards();
     UI.wireProjectPanel();
     UI.wireStylePanel();
+    UI.wireThemePanel();
     UI.wireParcelPanel();
     UI.wireExportPanel();
     UI.wireDiagnostics();
@@ -30,6 +31,7 @@
     Store.subscribe(function (reason) {
       CMG.mapview.render();
       if (reason !== 'style' && !UI.suppressCards) UI.renderCards();
+      if (reason === 'theme' || reason === 'all') UI.renderCards();
       if (reason === 'all') syncControlsFromState();
     });
 
@@ -72,9 +74,6 @@
     document.getElementById('exportH').value = s.exportCfg.h;
     document.getElementById('exportDpi').value = String(s.exportCfg.dpi);
 
-    document.getElementById('subjectColor').value = s.style.subjectColor;
-    document.getElementById('compColor').value = s.style.compColor;
-    document.getElementById('parcelColor').value = s.style.parcelColor;
     document.getElementById('labelSize').value = s.style.labelSize;
     document.getElementById('labelSizeVal').textContent = s.style.labelSize + ' px';
     document.getElementById('pinScale').value = s.style.pinScale;
@@ -97,6 +96,7 @@
     CMG.mapview.map.setView([s.view.lat, s.view.lng], s.view.zoom, { animate: false });
 
     CMG.ui.refreshParcelPresets();
+    CMG.ui.renderThemePanel();
     UI.applyFrameSize();
     $sync();
   }

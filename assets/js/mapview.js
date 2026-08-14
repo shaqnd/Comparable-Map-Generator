@@ -146,9 +146,7 @@
     frame.style.setProperty('--ui-scale', MV.uiScale);
     frame.style.setProperty('--pin-scale', (s.pinScale || 100) / 100);
     frame.style.setProperty('--label-size', (s.labelSize || 13));
-    frame.style.setProperty('--subject-color', s.subjectColor);
-    frame.style.setProperty('--comp-color', s.compColor);
-    frame.style.setProperty('--parcel-color', s.parcelColor);
+    CMG.theme.apply(Store.state.theme, frame);
 
     var tiles = document.querySelector('.leaflet-tile-pane');
     if (tiles) {
@@ -172,8 +170,11 @@
   };
 
   function colorFor(p) {
-    var s = Store.state.style;
-    return p.role === 'subject' ? s.subjectColor : s.compColor;
+    return CMG.theme.colorFor(p, Store.state.theme);
+  }
+
+  function token(key, itemColor) {
+    return CMG.theme.resolve(key, Store.state.theme, itemColor);
   }
 
   /* ------------------------------------------------------------------- pins */
@@ -186,11 +187,13 @@
       '<div class="pin-inner' + selected + '" style="--c:' + U.escapeHtml(color) + '">' +
         '<svg viewBox="0 0 30 44" width="30" height="44">' +
           '<path d="M15 43C15 43 28 25 28 15A13 13 0 1 0 2 15C2 25 15 43 15 43Z" ' +
-                'fill="var(--c)" stroke="#ffffff" stroke-width="2.5" ' +
-                'stroke-linejoin="round" paint-order="stroke"/>' +
-          '<circle cx="15" cy="15" r="8.6" fill="#ffffff" fill-opacity="0.94"/>' +
+                'fill="var(--c)" stroke="' + U.escapeHtml(token('pinStroke')) + '" ' +
+                'stroke-width="2.5" stroke-linejoin="round" paint-order="stroke"/>' +
+          (token('pinDisc') === 'transparent' ? '' :
+            '<circle cx="15" cy="15" r="8.6" fill="' + U.escapeHtml(token('pinDisc')) + '"/>') +
         '</svg>' +
-        '<span class="pin-num" style="color:' + U.escapeHtml(color) + '">' +
+        '<span class="pin-num" style="color:' +
+          U.escapeHtml(CMG.theme.pinNumberColor(p, Store.state.theme)) + '">' +
           U.escapeHtml(text) + '</span>' +
       '</div>';
 
@@ -588,13 +591,17 @@
 
   function parcelStyle(p) {
     var s = Store.state.style;
+    // A parcel is the property, so it wears the property's colour — the binding
+    // that lets the legend do its work without callouts on the map.
+    var c = token('parcelStroke', colorFor(p));
+    var op = Number(Store.state.theme.tokens.parcelOpacity || 0) / 100;
     return {
-      color: s.parcelColor,
+      color: c,
       weight: 3,
       opacity: 1,
       fill: !!s.parcelFill,
-      fillColor: s.parcelColor,
-      fillOpacity: s.parcelFill ? 0.18 : 0,
+      fillColor: c,
+      fillOpacity: s.parcelFill ? op : 0,
       renderer: MV._renderer,
       pane: 'parcelPane',
       interactive: false
@@ -641,7 +648,7 @@
         MV.map.containerPointToLatLng(tipPt),
         MV.map.containerPointToLatLng(anchor)
       ], {
-        color: colorFor(p),
+        color: token('leader', colorFor(p)),
         weight: 1.6 * MV.uiScale,
         opacity: 0.95,
         renderer: MV._renderer,
@@ -669,7 +676,7 @@
       if (!isFinite(mi) || mi <= 0) return;
       var circle = L.circle([subject.lat, subject.lng], {
         radius: mi * 1609.344,
-        color: Store.state.style.subjectColor,
+        color: token('ring'),
         weight: 1.5 * MV.uiScale,
         opacity: 0.85,
         dashArray: (6 * MV.uiScale) + ',' + (6 * MV.uiScale),
@@ -711,7 +718,7 @@
     Store.state.comps.forEach(function (c) {
       if (c.lat == null) return;
       var line = L.polyline([[subject.lat, subject.lng], [c.lat, c.lng]], {
-        color: Store.state.style.compColor,
+        color: token('connector'),
         weight: 1.4 * MV.uiScale,
         opacity: 0.7,
         dashArray: (5 * MV.uiScale) + ',' + (5 * MV.uiScale),
@@ -897,7 +904,8 @@
       targetId: targetId || MV.targetProperty().id,
       points: [],
       line: L.polyline([], {
-        color: Store.state.style.parcelColor, weight: 3, dashArray: '6,5',
+        color: colorFor(Store.find(targetId || MV.targetProperty().id) || Store.state.subject),
+        weight: 3, dashArray: '6,5',
         renderer: MV._renderer, pane: 'parcelPane', interactive: false
       }).addTo(MV.map),
       vertices: L.layerGroup().addTo(MV.map)
@@ -911,7 +919,8 @@
     MV._draw.line.setLatLngs(MV._draw.points.concat(
       MV._draw.points.length > 2 ? [MV._draw.points[0]] : []));
     L.circleMarker(latlng, {
-      radius: 4, color: '#fff', weight: 2, fillColor: Store.state.style.parcelColor,
+      radius: 4, color: token('pinStroke'), weight: 2,
+      fillColor: colorFor(Store.find(MV._draw.targetId) || Store.state.subject),
       fillOpacity: 1, renderer: MV._renderer, pane: 'parcelPane', interactive: false
     }).addTo(MV._draw.vertices);
   };
@@ -922,7 +931,8 @@
     MV._draw.vertices.clearLayers();
     MV._draw.points.forEach(function (ll) {
       L.circleMarker(ll, {
-        radius: 4, color: '#fff', weight: 2, fillColor: Store.state.style.parcelColor,
+        radius: 4, color: token('pinStroke'), weight: 2,
+        fillColor: colorFor(Store.find(MV._draw.targetId) || Store.state.subject),
         fillOpacity: 1, renderer: MV._renderer, pane: 'parcelPane', interactive: false
       }).addTo(MV._draw.vertices);
     });

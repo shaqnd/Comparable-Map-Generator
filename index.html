@@ -24,6 +24,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab is-active" data-tab="properties" role="tab">Properties</button>
       <button class="tab" data-tab="map" role="tab">Map</button>
+      <button class="tab" data-tab="theme" role="tab">Theme</button>
       <button class="tab" data-tab="export" role="tab">Export</button>
     </nav>
 
@@ -117,20 +118,11 @@
             <input type="checkbox" id="toggleParcelFill" checked>
             <span>Shade selected parcels</span>
           </label>
-          <label class="field">
-            <span>Parcel outline colour</span>
-            <input type="color" id="parcelColor" value="#ffd400">
-          </label>
         </div>
 
         <div class="panel">
           <div class="panel-head"><h3>Markers &amp; labels</h3></div>
-          <div class="grid2">
-            <label class="field"><span>Subject colour</span>
-              <input type="color" id="subjectColor" value="#d61f26"></label>
-            <label class="field"><span>Comp colour</span>
-              <input type="color" id="compColor" value="#1a56db"></label>
-          </div>
+          <p class="hint">Colours live on the <b>Theme</b> tab.</p>
           <label class="field">
             <span>Label text size <b id="labelSizeVal">13 px</b></span>
             <input type="range" id="labelSize" min="9" max="24" value="13">
@@ -180,6 +172,54 @@
           <button id="runDiagnostics" class="btn btn-block">Run connection test</button>
           <div id="diagOutput" class="status"></div>
         </div>
+      </section>
+
+
+      <!-- ========== THEME ========== -->
+      <section class="tabpanel" data-panel="theme">
+
+        <div class="panel">
+          <div class="panel-head"><h3>Theme</h3></div>
+          <p class="hint">Every colour on the map is yours to set. Save the result and
+             it is one click on the next job — your reports stop looking like
+             everyone else's.</p>
+          <label class="field">
+            <span>Start from</span>
+            <select id="themePreset"></select>
+          </label>
+          <label class="field">
+            <span>Theme name</span>
+            <input type="text" id="themeName" placeholder="Carter Equities house style">
+          </label>
+          <div class="btn-row wrap">
+            <button id="themeSave" class="btn btn-primary">Save theme</button>
+            <button id="themeSaveNew" class="btn">Save as new</button>
+            <button id="themeDelete" class="btn btn-danger-ghost">Delete</button>
+          </div>
+          <div class="btn-row wrap">
+            <button id="themeExport" class="btn btn-sm">Export file</button>
+            <button id="themeImport" class="btn btn-sm">Import file</button>
+            <button id="themeReset" class="btn btn-sm">Reset to preset</button>
+          </div>
+          <input type="file" id="themeImportInput" accept=".json,application/json" hidden>
+          <p class="hint" id="themeStatus"></p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Comparable palette</h3>
+            <span class="pill" id="paletteCount">0</span>
+          </div>
+          <p class="hint">Comparables take these colours in order, then cycle. Each
+             comp can be overridden individually on the Properties tab.</p>
+          <div id="paletteEditor" class="palette"></div>
+          <div class="btn-row">
+            <button id="paletteAdd" class="btn btn-sm">+ Add colour</button>
+            <button id="paletteRemove" class="btn btn-sm">Remove last</button>
+          </div>
+        </div>
+
+        <div id="tokenGroups"></div>
       </section>
 
       <!-- ========== EXPORT ========== -->
@@ -267,12 +307,11 @@
         <div class="ov ov-north" id="ovNorth">
           <div class="ov-scale">
             <svg viewBox="0 0 44 64" width="44" height="64" aria-label="North arrow">
-              <polygon points="22,3 32,42 22,34 12,42" fill="#111"
-                       stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
-              <text x="22" y="60" text-anchor="middle" font-size="18"
+              <polygon class="north-body" points="22,3 32,42 22,34 12,42"
+                       stroke-width="1.6" stroke-linejoin="round"/>
+              <text class="north-letter" x="22" y="60" text-anchor="middle" font-size="18"
                     font-family="Georgia, 'Times New Roman', serif" font-weight="700"
-                    fill="#111" stroke="#fff" stroke-width="2.4"
-                    paint-order="stroke">N</text>
+                    stroke-width="2.4" paint-order="stroke">N</text>
             </svg>
           </div>
         </div>
@@ -323,6 +362,7 @@
 
 <script src="assets/js/util.js"></script>
 <script src="assets/js/config.js"></script>
+<script src="assets/js/theme.js"></script>
 <script src="assets/js/store.js"></script>
 <script src="assets/js/geocode.js"></script>
 <script src="assets/js/parcels.js"></script>

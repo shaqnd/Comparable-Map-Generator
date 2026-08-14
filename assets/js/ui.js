@@ -48,7 +48,7 @@
   /* ------------------------------------------------------- property cards */
 
   function badge(p) {
-    var color = p.role === 'subject' ? Store.state.style.subjectColor : Store.state.style.compColor;
+    var color = CMG.theme.colorFor(p);
     var text = p.role === 'subject' ? 'S' : String(p.number);
     return '<span class="prop-badge" style="background:' + U.escapeHtml(color) + '">' +
            U.escapeHtml(text) + '</span>';
@@ -168,6 +168,11 @@
         (p.labelCustom ? '<button class="btn btn-sm" data-act="resetLabel">Reset label</button>' : '') +
         '<label class="check inline"><input type="checkbox" data-act="showLabel"' +
           (p.showLabel === false ? '' : ' checked') + '><span>Label</span></label>' +
+        '<label class="check inline" title="Override this property\'s theme colour">' +
+          '<input type="color" data-act="propColor" class="prop-color" value="' +
+          U.escapeHtml(CMG.theme.colorFor(p)) + '">' +
+          '<span>Colour</span></label>' +
+        (p.color ? '<button class="btn btn-sm" data-act="clearColor">Use palette</button>' : '') +
       '</div>' +
       (isComp ?
       '<div class="btn-row wrap">' +
@@ -249,6 +254,10 @@
     if (act === 'showLabel') {
       Store.update(p.id, { showLabel: ev.target.checked });
     }
+
+    if (act === 'propColor') {
+      Store.update(p.id, { color: ev.target.value });
+    }
   }
 
   function onCardClick(ev) {
@@ -295,6 +304,10 @@
         if (CMG.mapview.snapToParcelCentre(p.id)) {
           UI.status('Pin centred on the parcel.', 'ok');
         }
+        break;
+
+      case 'clearColor':
+        Store.update(p.id, { color: null });
         break;
 
       case 'clearParcel':
@@ -520,10 +533,7 @@
     });
     $('#dimVal').textContent = Store.state.style.basemapDim + '%';
 
-    /* markers and labels */
-    bindValue('subjectColor', 'subjectColor', null, redraw);
-    bindValue('compColor', 'compColor', null, redraw);
-    bindValue('parcelColor', 'parcelColor', null, redraw);
+    /* markers and labels — colours live on the Theme tab */
     bindValue('labelSize', 'labelSize', Number, function () {
       $('#labelSizeVal').textContent = Store.state.style.labelSize + ' px';
       CMG.mapview.updateLeaders();
@@ -559,6 +569,238 @@
     }, 350));
 
     function redraw() { CMG.mapview.render(); }
+  };
+
+
+  /* ------------------------------------------------------------ theme panel */
+
+  /** <input type="color"> only understands #rrggbb, so alpha is carried aside. */
+  function splitColor(v) {
+    var m = /^#([0-9a-f]{6})([0-9a-f]{2})$/i.exec(String(v || ''));
+    if (m) return { hex: '#' + m[1], alpha: parseInt(m[2], 16) };
+    if (/^#[0-9a-f]{6}$/i.test(String(v || ''))) return { hex: v, alpha: 255 };
+    return { hex: '#ffffff', alpha: 255 };
+  }
+
+  function joinColor(hex, alpha) {
+    if (alpha >= 255) return hex;
+    return hex + ('0' + Math.round(alpha).toString(16)).slice(-2);
+  }
+
+  function tokenRow(t) {
+    var theme = Store.state.theme;
+    var raw = theme.tokens[t.key];
+
+    if (t.kind === 'opacity') {
+      return '<label class="field"><span>' + U.escapeHtml(t.label) +
+        ' <b>' + Number(raw) + '%</b></span>' +
+        '<input type="range" min="0" max="100" data-token="' + t.key + '" ' +
+        'data-kind="opacity" value="' + Number(raw) + '"></label>';
+    }
+
+    var isAuto = raw === 'auto';
+    var transparent = raw === 'transparent';
+    var c = splitColor(isAuto || transparent
+      ? CMG.theme.resolve(t.key, theme) : raw);
+
+    return '<div class="token-row">' +
+      '<span class="token-label">' + U.escapeHtml(t.label) + '</span>' +
+      '<input type="color" class="token-swatch" data-token="' + t.key + '" ' +
+        'value="' + c.hex + '"' + (isAuto || transparent ? ' disabled' : '') + '>' +
+      '<input type="range" class="token-alpha" min="0" max="255" ' +
+        'data-token-alpha="' + t.key + '" value="' + c.alpha + '" ' +
+        'title="Opacity"' + (isAuto || transparent ? ' disabled' : '') + '>' +
+      (t.auto
+        ? '<label class="token-flag"><input type="checkbox" data-token-auto="' + t.key + '"' +
+          (isAuto ? ' checked' : '') + '><span>Auto</span></label>'
+        : (t.key === 'pinDisc'
+            ? '<label class="token-flag"><input type="checkbox" data-token-none="' + t.key + '"' +
+              (transparent ? ' checked' : '') + '><span>None</span></label>'
+            : '<span class="token-flag"></span>')) +
+    '</div>';
+  }
+
+  UI.renderThemePanel = function () {
+    var theme = Store.state.theme;
+
+    var sel = $('#themePreset');
+    var lib = CMG.theme.library();
+    sel.innerHTML =
+      '<optgroup label="Built in">' +
+        lib.filter(function (t) { return t.builtIn; }).map(function (t) {
+          return '<option value="' + t.id + '">' + U.escapeHtml(t.name) + '</option>';
+        }).join('') +
+      '</optgroup>' +
+      (lib.some(function (t) { return !t.builtIn; })
+        ? '<optgroup label="Saved">' +
+            lib.filter(function (t) { return !t.builtIn; }).map(function (t) {
+              return '<option value="' + t.id + '">' + U.escapeHtml(t.name) + '</option>';
+            }).join('') +
+          '</optgroup>'
+        : '');
+    sel.value = theme.id;
+    $('#themeName').value = theme.name;
+    $('#themeDelete').disabled = !lib.some(function (t) {
+      return t.id === theme.id && !t.builtIn;
+    });
+
+    $('#paletteCount').textContent = String(theme.palette.length);
+    $('#paletteEditor').innerHTML = theme.palette.map(function (c, i) {
+      return '<label class="pal-chip"><span>' + (i + 1) + '</span>' +
+             '<input type="color" data-pal="' + i + '" value="' + U.escapeHtml(c) + '"></label>';
+    }).join('');
+
+    $('#tokenGroups').innerHTML = CMG.THEME_GROUPS.map(function (g) {
+      var rows = CMG.THEME_TOKENS.filter(function (t) { return t.group === g; });
+      if (!rows.length) return '';
+      return '<div class="panel"><div class="panel-head"><h3>' + U.escapeHtml(g) +
+             '</h3></div>' + rows.map(tokenRow).join('') + '</div>';
+    }).join('');
+  };
+
+  UI.wireThemePanel = function () {
+    UI.renderThemePanel();
+
+    $('#themePreset').addEventListener('change', function () {
+      var chosen = CMG.theme.library().filter(function (t) {
+        return t.id === this.value;
+      }.bind(this))[0];
+      if (!chosen) return;
+      Store.pushUndo();
+      Store.setTheme(chosen);
+      UI.renderThemePanel();
+      UI.status('Theme set to ' + chosen.name + '.', 'ok');
+    });
+
+    $('#themeName').addEventListener('input', function () {
+      Store.state.theme.name = this.value;
+      Store.saveLocal();
+    });
+
+    /* One delegated handler for every swatch, slider and flag. */
+    $('#tokenGroups').addEventListener('input', function (ev) {
+      var t = ev.target;
+      var key = t.getAttribute('data-token');
+
+      if (key && t.getAttribute('data-kind') === 'opacity') {
+        Store.setToken(key, Number(t.value));
+        var out = t.closest('.field').querySelector('b');
+        if (out) out.textContent = Number(t.value) + '%';
+        return;
+      }
+      if (key) {
+        var alpha = t.closest('.token-row').querySelector('[data-token-alpha]');
+        Store.setToken(key, joinColor(t.value, alpha ? Number(alpha.value) : 255));
+        return;
+      }
+      var alphaKey = t.getAttribute('data-token-alpha');
+      if (alphaKey) {
+        var sw = t.closest('.token-row').querySelector('[data-token]');
+        Store.setToken(alphaKey, joinColor(sw.value, Number(t.value)));
+      }
+    });
+
+    $('#tokenGroups').addEventListener('change', function (ev) {
+      var autoKey = ev.target.getAttribute('data-token-auto');
+      var noneKey = ev.target.getAttribute('data-token-none');
+      if (autoKey) {
+        Store.setToken(autoKey, ev.target.checked
+          ? 'auto'
+          : CMG.theme.resolve(autoKey, Store.state.theme));
+        UI.renderThemePanel();
+      }
+      if (noneKey) {
+        Store.setToken(noneKey, ev.target.checked ? 'transparent' : '#ffffff');
+        UI.renderThemePanel();
+      }
+    });
+
+    $('#paletteEditor').addEventListener('input', function (ev) {
+      var i = ev.target.getAttribute('data-pal');
+      if (i == null) return;
+      var pal = Store.state.theme.palette.slice();
+      pal[Number(i)] = ev.target.value;
+      Store.setPalette(pal);
+    });
+
+    $('#paletteAdd').addEventListener('click', function () {
+      var pal = Store.state.theme.palette.slice();
+      pal.push(pal[pal.length - 1] || '#1a56db');
+      Store.setPalette(pal);
+      UI.renderThemePanel();
+    });
+
+    $('#paletteRemove').addEventListener('click', function () {
+      var pal = Store.state.theme.palette.slice();
+      if (pal.length <= 1) { UI.status('A palette needs at least one colour.', 'warn'); return; }
+      pal.pop();
+      Store.setPalette(pal);
+      UI.renderThemePanel();
+    });
+
+    $('#themeSave').addEventListener('click', function () {
+      // saveToLibrary forks off a built-in; adopt whatever id it settled on.
+      var saved = CMG.theme.saveToLibrary(Store.state.theme);
+      Store.setTheme(saved);
+      UI.renderThemePanel();
+      UI.status('Theme "' + saved.name + '" saved to this browser.', 'ok');
+    });
+
+    $('#themeSaveNew').addEventListener('click', function () {
+      var name = window.prompt('Name for the new theme',
+                               Store.state.theme.name + ' copy');
+      if (!name) return;
+      var copy = CMG.theme.normalise(JSON.parse(JSON.stringify(Store.state.theme)));
+      copy.id = U.uid('theme');
+      copy.name = name;
+      copy.builtIn = false;
+      CMG.theme.saveToLibrary(copy);
+      Store.setTheme(copy);
+      UI.renderThemePanel();
+      UI.status('Theme "' + name + '" saved.', 'ok');
+    });
+
+    $('#themeDelete').addEventListener('click', function () {
+      var t = Store.state.theme;
+      if (!window.confirm('Delete the theme "' + t.name + '"? The map keeps its colours.')) return;
+      CMG.theme.removeFromLibrary(t.id);
+      UI.renderThemePanel();
+      UI.status('Theme deleted from the library.');
+    });
+
+    $('#themeReset').addEventListener('click', function () {
+      Store.pushUndo();
+      Store.setTheme(CMG.theme.preset('classic'));
+      UI.renderThemePanel();
+      UI.status('Reset to the Classic appraisal theme.');
+    });
+
+    $('#themeExport').addEventListener('click', function () {
+      U.downloadBlob(CMG.theme.toFile(Store.state.theme),
+                     U.slugify(Store.state.theme.name) + '.cmtheme.json');
+    });
+
+    $('#themeImport').addEventListener('click', function () { $('#themeImportInput').click(); });
+
+    $('#themeImportInput').addEventListener('change', function () {
+      var file = this.files && this.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var t = CMG.theme.normalise(JSON.parse(String(reader.result)));
+          t.builtIn = false;
+          CMG.theme.saveToLibrary(t);
+          Store.setTheme(t);
+          UI.renderThemePanel();
+          UI.status('Theme "' + t.name + '" imported.', 'ok');
+        } catch (err) {
+          UI.status('That file is not a theme: ' + err.message, 'error');
+        }
+      };
+      reader.readAsText(file);
+      this.value = '';
+    });
   };
 
   /* ----------------------------------------------------------- parcel panel */

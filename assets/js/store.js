@@ -25,6 +25,7 @@
       },
       labelText: '',              // resolved text shown on the map
       labelCustom: false,         // true once hand-edited; stops auto-regeneration
+      color: null,                // overrides the theme palette for this one property
       labelOffset: null,          // {x,y} in pixels from the pin, at zoom-independent scale
       showLabel: true,
       parcel: null                // { geometry, attributes, source }
@@ -57,6 +58,7 @@
         comps: [],
         view: JSON.parse(JSON.stringify(CMG.DEFAULT_VIEW)),
         style: JSON.parse(JSON.stringify(CMG.DEFAULT_STYLE)),
+        theme: CMG.theme.preset('classic'),
         parcelService: { presetId: 'none', url: '' },
         exportCfg: { presetId: 'body-half', w: 6.5, h: 4.0, dpi: 300 }
       };
@@ -68,6 +70,16 @@
       var base = Store.blankProject();
       var out = Object.assign({}, base, p);
       out.style = Object.assign({}, base.style, p.style || {});
+
+      // Projects saved before themes existed carried three loose colours.
+      var legacy = p.style || {};
+      out.theme = CMG.theme.normalise(p.theme || null);
+      if (!p.theme && legacy.subjectColor) {
+        out.theme.tokens.subject = legacy.subjectColor;
+        if (legacy.compColor) out.theme.palette = [legacy.compColor];
+        if (legacy.compColor) out.theme.tokens.connector = legacy.compColor;
+        out.theme.name = 'Imported';
+      }
       out.view = Object.assign({}, base.view, p.view || {});
       out.exportCfg = Object.assign({}, base.exportCfg, p.exportCfg || {});
       out.parcelService = Object.assign({}, base.parcelService, p.parcelService || {});
@@ -222,6 +234,23 @@
     setStyle: function (patch) {
       Object.assign(Store.state.style, patch);
       Store.emit('style');
+    },
+
+    /** Replace the whole look. Called by the preset picker and on import. */
+    setTheme: function (theme) {
+      Store.state.theme = CMG.theme.normalise(theme);
+      Store.emit('theme');
+    },
+
+    /** Change one colour without disturbing the rest of the theme. */
+    setToken: function (key, value) {
+      Store.state.theme.tokens[key] = value;
+      Store.emit('theme');
+    },
+
+    setPalette: function (colors) {
+      Store.state.theme.palette = colors.slice();
+      Store.emit('theme');
     },
 
     setView: function (patch) {

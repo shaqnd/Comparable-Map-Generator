@@ -149,11 +149,107 @@
               'LOT_SIZE', 'LANDAREA']
   };
 
+
+  /* ------------------------------------------------------------------ theme
+     Every colour the map can draw, as a named token. Grouped for the sidebar;
+     `def` is the value in the Classic theme. Tokens marked `auto` may inherit
+     another colour instead of holding one of their own. */
+  CMG.THEME_TOKENS = [
+    { key: 'subject',       group: 'Subject & comparables', label: 'Subject',            def: '#d61f26' },
+
+    { key: 'pinStroke',     group: 'Pins',      label: 'Pin outline',          def: '#ffffff' },
+    { key: 'pinDisc',       group: 'Pins',      label: 'Pin centre',           def: '#ffffff' },
+
+    { key: 'parcelOpacity', group: 'Parcels',   label: 'Parcel shading',       def: 18, kind: 'opacity' },
+    { key: 'parcelStroke',  group: 'Parcels',   label: 'Parcel outline',       def: 'auto', auto: true },
+
+    { key: 'labelBg',       group: 'Labels',    label: 'Label background',     def: '#ffffffee' },
+    { key: 'labelText',     group: 'Labels',    label: 'Label text',           def: '#14202c' },
+    { key: 'labelBorder',   group: 'Labels',    label: 'Label border',         def: '#00000047' },
+    { key: 'leader',        group: 'Labels',    label: 'Leader line',          def: 'auto', auto: true },
+
+    { key: 'ring',          group: 'Lines',     label: 'Radius rings',         def: 'auto', auto: true },
+    { key: 'connector',     group: 'Lines',     label: 'Subject-to-comp lines', def: '#1a56db' },
+
+    { key: 'titleBg',       group: 'Title block', label: 'Title background',   def: '#ffffffee' },
+    { key: 'titleText',     group: 'Title block', label: 'Title text',         def: '#101a24' },
+    { key: 'titleSub',      group: 'Title block', label: 'Subtitle text',      def: '#46586b' },
+    { key: 'titleBorder',   group: 'Title block', label: 'Title border',       def: '#0000004d' },
+    { key: 'titleAccent',   group: 'Title block', label: 'Title accent bar',   def: 'auto', auto: true },
+
+    { key: 'legendBg',      group: 'Legend',    label: 'Legend background',    def: '#fffffff2' },
+    { key: 'legendBorder',  group: 'Legend',    label: 'Legend border',        def: '#00000052' },
+    { key: 'legendTitle',   group: 'Legend',    label: 'Legend heading',       def: '#46586b' },
+    { key: 'legendText',    group: 'Legend',    label: 'Legend text',          def: '#14202c' },
+    { key: 'legendSub',     group: 'Legend',    label: 'Legend detail text',   def: '#5a6a7c' },
+
+    { key: 'north',         group: 'Furniture', label: 'North arrow',          def: '#111111' },
+    { key: 'northHalo',     group: 'Furniture', label: 'North arrow halo',     def: '#ffffff' },
+    { key: 'scaleInk',      group: 'Furniture', label: 'Scale bar',            def: '#14202c' },
+    { key: 'scaleBg',       group: 'Furniture', label: 'Scale bar background', def: '#ffffffd1' }
+  ];
+
+  CMG.THEME_GROUPS = ['Subject & comparables', 'Pins', 'Parcels', 'Labels',
+                      'Lines', 'Title block', 'Legend', 'Furniture'];
+
+  /* Starting points. "Colorado Atlas" mirrors the Naked Denver product palette;
+     "Monochrome" is for reports that get photocopied. */
+  CMG.PRESET_THEMES = [
+    {
+      id: 'classic',
+      name: 'Classic appraisal',
+      palette: ['#1a56db', '#0d7d5a', '#b3261e', '#7a3cb8', '#b26a00', '#0f6f86'],
+      tokens: {}
+    },
+    {
+      id: 'atlas',
+      name: 'Colorado Atlas',
+      palette: ['#2563eb', '#ea7317', '#8b5cf6', '#16a34a', '#db2777', '#0891b2'],
+      tokens: {
+        subject: '#0f5c46',
+        connector: '#0f5c46',
+        titleAccent: '#0f5c46',
+        titleBg: '#fdfbf6f7',
+        legendBg: '#fdfbf6f7',
+        labelBg: '#fdfbf6f2',
+        titleText: '#12241d',
+        labelText: '#12241d'
+      }
+    },
+    {
+      id: 'muted',
+      name: 'Muted single accent',
+      palette: ['#1f4f8f'],
+      tokens: {
+        subject: '#c2410c',
+        connector: '#1f4f8f',
+        pinDisc: 'transparent',
+        labelBg: '#ffffffe6',
+        parcelOpacity: 12
+      }
+    },
+    {
+      id: 'mono',
+      name: 'Monochrome',
+      palette: ['#1c1c1c'],
+      tokens: {
+        subject: '#1c1c1c',
+        pinDisc: '#ffffff',
+        connector: '#5a5a5a',
+        ring: '#5a5a5a',
+        titleAccent: '#1c1c1c',
+        legendTitle: '#4a4a4a',
+        legendSub: '#6a6a6a',
+        titleSub: '#4a4a4a',
+        parcelOpacity: 10
+      }
+    }
+  ];
+
+  CMG.THEME_KEY = 'cmg.themes.v1';
+
   /* --------------------------------------------------------------- defaults */
   CMG.DEFAULT_STYLE = {
-    subjectColor: '#d61f26',
-    compColor: '#1a56db',
-    parcelColor: '#ffd400',
     parcelFill: true,
     labelSize: 13,
     pinScale: 100,

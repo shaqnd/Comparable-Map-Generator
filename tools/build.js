@@ -42,6 +42,7 @@ const read = (p) => fs.readFileSync(path.isAbsolute(p) ? p : path.join(ROOT, p),
 const APP_SCRIPTS = [
   'assets/js/util.js',
   'assets/js/config.js',
+  'assets/js/theme.js',
   'assets/js/store.js',
   'assets/js/geocode.js',
   'assets/js/parcels.js',
