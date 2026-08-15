@@ -59,6 +59,7 @@
       };
 
       function enterExportMode() {
+        CMG.mapview.suspendAutoFit = true;   // the export sets the view itself
         document.body.classList.add('is-exporting');
         document.body.style.overflow = 'hidden';
         frame.classList.add('export-render');
@@ -72,6 +73,7 @@
       }
 
       function leaveExportMode() {
+        CMG.mapview.suspendAutoFit = false;
         frame.classList.remove('export-render');
         frame.style.width = saved.frameW;
         frame.style.height = saved.frameH;

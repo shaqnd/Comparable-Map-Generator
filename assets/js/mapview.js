@@ -70,9 +70,11 @@
 
     MV.setBasemap(v.basemap, v.labelOverlay);
 
+    var settle = U.debounce(function () { MV.maybeAutoFit(); }, 450);
     MV.map.on('moveend zoomend', function () {
       var c = MV.map.getCenter();
       Store.setView({ lat: c.lat, lng: c.lng, zoom: MV.map.getZoom() });
+      settle();
     });
 
     MV.map.on('mousemove', function (e) {
@@ -578,6 +580,7 @@
     drawConnectors();
     MV.autoPlaceLabels();
     MV.updateLeaders();
+    MV.maybeAutoFit();
     MV.renderLegend();
     MV.renderTitle();
   };
@@ -979,6 +982,58 @@
 
   MV.isDrawing = function () { return !!MV._draw; };
 
+
+  /* ---------------------------------------------------------------- auto-fit
+
+     This map exists to show where the comparables sit relative to the subject,
+     so by default every pin stays on screen: the view refits when the set of
+     properties changes, and pulls back if navigation takes one out of frame.
+     Small adjustments are left alone — it only acts once something has
+     actually left the picture, so it never fights an ordinary nudge. */
+
+  MV.suspendAutoFit = false;
+
+  /** Bounds covering every located pin and any parcel drawn. */
+  MV.contentBounds = function () {
+    var pts = Store.located().map(function (p) { return [p.lat, p.lng]; });
+    Store.all().forEach(function (p) {
+      if (!p.parcel || !p.parcel.geometry) return;
+      U.outerRings(p.parcel.geometry).forEach(function (ring) {
+        ring.forEach(function (c) { pts.push([c[1], c[0]]); });
+      });
+    });
+    return pts.length ? L.latLngBounds(pts) : null;
+  };
+
+  /** Is everything inside the view, allowing for the label margin? */
+  MV.allInView = function () {
+    var content = MV.contentBounds();
+    if (!content) return true;
+    return MV.map.getBounds().pad(-0.10).contains(content);
+  };
+
+  MV.autoFitEnabled = function () {
+    return Store.state.style.autoFit !== false;
+  };
+
+  /** Refit if enabled and something has drifted off. */
+  MV.maybeAutoFit = function () {
+    if (MV.suspendAutoFit || !MV.autoFitEnabled()) return false;
+    if (!Store.located().length) return false;
+    if (MV.allInView()) return false;
+    MV.fitAll();
+    return true;
+  };
+
+  /** Turn auto-fit off because the user asked for a view it would undo. */
+  MV.releaseAutoFit = function (why) {
+    if (!MV.autoFitEnabled()) return false;
+    Store.setStyle({ autoFit: false });
+    MV._onStatus((why || 'Free navigation on') +
+                 ' — "Keep all pins in view" switched off.', 'warn');
+    return true;
+  };
+
   /* ---------------------------------------------------------------- framing */
 
   MV.fitAll = function () {
@@ -1006,6 +1061,7 @@
   MV.fitSubject = function () {
     var s = Store.state.subject;
     if (s.lat == null) return false;
+    MV.releaseAutoFit('Centred on the subject');
     MV.map.setView([s.lat, s.lng], Math.max(MV.map.getZoom(), 17), { animate: false });
     return true;
   };
@@ -1013,6 +1069,7 @@
   MV.panTo = function (id) {
     var p = Store.find(id);
     if (!p || p.lat == null) return false;
+    if (!MV.allInView()) MV.releaseAutoFit('Moved to one property');
     MV.map.panTo([p.lat, p.lng], { animate: true });
     return true;
   };

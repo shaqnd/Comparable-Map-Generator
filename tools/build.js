@@ -181,7 +181,7 @@ function previewMarkup(note) {
     <div class="cmg-preview-foot">
       <span class="grow">${note}</span>
       <button class="cmg-ghost" id="cmgPreviewCopy" type="button">Copy</button>
-      <a class="cmg-primary" id="cmgPreviewSave" href="#" download>Save PNG</a>
+      <button class="cmg-primary" id="cmgPreviewSave" type="button">Save PNG</button>
       <button class="cmg-ghost" id="cmgPreviewClose" type="button">Edit the map</button>
     </div>
   </div>
@@ -192,23 +192,67 @@ function previewMarkup(note) {
 const PREVIEW_WIRE = `
 (function (CMG) {
   'use strict';
+
+  var current = null;   // the canvas behind whatever the preview is showing
+
   CMG.showPreview = function (canvas) {
+    current = canvas;
     var host = document.getElementById('cmgPreview');
-    var url = canvas.toDataURL('image/png');
-    document.getElementById('cmgPreviewImg').src = url;
-    var save = document.getElementById('cmgPreviewSave');
-    save.href = url;
-    save.download = CMG.exporter.fileName('png');
+    document.getElementById('cmgPreviewImg').src = canvas.toDataURL('image/png');
     document.getElementById('cmgPreviewMeta').textContent =
       canvas.width + ' \\u00d7 ' + canvas.height + ' px at ' +
       CMG.store.state.exportCfg.dpi + ' DPI \\u2014 ' +
       CMG.store.state.exportCfg.w + ' \\u00d7 ' + CMG.store.state.exportCfg.h + ' in';
+    document.getElementById('cmgPreviewSave').textContent = 'Save PNG';
     host.hidden = false;
     return canvas;
   };
 
+  function pngBlob() {
+    return new Promise(function (resolve, reject) {
+      if (!current) return reject(new Error('Nothing to save.'));
+      current.toBlob(function (b) {
+        b ? resolve(b) : reject(new Error('Could not encode the image.'));
+      }, 'image/png');
+    });
+  }
+
+  /* Saving a file differs by where this page is running. Opened from disk an
+     anchor download works; inside the artifact viewer the frame cannot download
+     at all and has to hand the file to the host, which asks the viewer first. */
+  function saveImage(btn) {
+    var name = CMG.exporter.fileName('png');
+    var host = (window.claude && typeof window.claude.use === 'function')
+      ? window.claude.use('downloads') : Promise.resolve(null);
+
+    return Promise.resolve(host).then(function (downloads) {
+      return pngBlob().then(function (blob) {
+        if (!downloads) {
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+          btn.textContent = 'Saved';
+          return;
+        }
+        return downloads.save({ filename: name, data: blob }).then(function () {
+          btn.textContent = 'Saved';
+        }, function (err) {
+          var code = err && err.code;
+          if (code === 'declined') { btn.textContent = 'Save PNG'; return; }
+          if (code === 'rate_limited') { btn.textContent = 'Try again'; return; }
+          btn.textContent = 'Right-click the image';
+        });
+      });
+    }).catch(function () { btn.textContent = 'Right-click the image'; });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     var host = document.getElementById('cmgPreview');
+
     document.getElementById('cmgPreviewClose').addEventListener('click', function () {
       host.hidden = true;
     });
@@ -216,10 +260,14 @@ const PREVIEW_WIRE = `
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape' && !host.hidden) host.hidden = true;
     });
+
+    document.getElementById('cmgPreviewSave').addEventListener('click', function () {
+      saveImage(this);
+    });
+
     document.getElementById('cmgPreviewCopy').addEventListener('click', function () {
       var btn = this;
-      var img = document.getElementById('cmgPreviewImg');
-      fetch(img.src).then(function (r) { return r.blob(); }).then(function (blob) {
+      pngBlob().then(function (blob) {
         return navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       }).then(function () { btn.textContent = 'Copied'; })
         .catch(function () { btn.textContent = 'Use Save PNG'; });

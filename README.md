@@ -161,6 +161,18 @@ single accent, Monochrome) always stay as shipped.
 The theme travels inside the `.cmap.json` too, so reopening an old job reproduces
 exactly the exhibit that went into that report.
 
+### 4c. Keeping the pins in frame
+
+The point of this map is the relationship between the subject and its comparables, so
+**Keep all pins in view** is on by default. The view refits whenever a pin is added,
+moved or removed, and pulls back if navigation takes one off screen. A small nudge that
+leaves everything visible is respected — it only acts once something has actually left
+the frame.
+
+Untick it (toolbar, or **Export → Framing**) to pan and zoom freely. **Centre on
+subject** and **Zoom to** a single property need free navigation, so they switch it off
+for you and say so.
+
 ### 5. Map furniture
 
 Title block, subtitle/file number, legend with the comparable schedule (optionally

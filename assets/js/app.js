@@ -29,6 +29,7 @@
     UI.wireKeyboard();
     CMG.counter.wire();
     UI.wireFirstRun();
+    UI.syncAutoFit();
 
     /* Redraw whenever the project changes.
 
@@ -48,6 +49,7 @@
         CMG.mapview.render();
         if (todo.cards && !UI.suppressCards) UI.renderCards();
         if (todo.controls) syncControlsFromState();
+        UI.syncAutoFit();
       });
     });
 

@@ -1086,6 +1086,12 @@
     $('#exportJpg').addEventListener('click', function () { runExport('jpg'); });
     $('#exportClip').addEventListener('click', function () { runExport('clip'); });
 
+    $('#autoFit').addEventListener('click', function () {
+      Store.setStyle({ autoFit: this.checked });
+      UI.syncAutoFit();
+      if (this.checked) CMG.mapview.fitAll();
+    });
+
     $('#fitAll').addEventListener('click', function () { CMG.mapview.fitAll(); });
     $('#fitSubject').addEventListener('click', function () { CMG.mapview.fitSubject(); });
 
@@ -1365,6 +1371,18 @@
         else CMG.mapview.setMode(mode);
       });
     });
+    var autoFitBtn = $('#btnAutoFit');
+    autoFitBtn.addEventListener('click', function () {
+      Store.setStyle({ autoFit: !CMG.mapview.autoFitEnabled() });
+      UI.syncAutoFit();
+      if (CMG.mapview.autoFitEnabled()) {
+        CMG.mapview.fitAll();
+        UI.status('Every pin will stay in view.');
+      } else {
+        UI.status('Free navigation — pan and zoom anywhere.');
+      }
+    });
+
     $('#btnFitAll').addEventListener('click', function () {
       if (!CMG.mapview.fitAll()) UI.status('Nothing to fit yet — add an address.', 'warn');
     });
@@ -1373,6 +1391,18 @@
     });
     $('#modalClose').addEventListener('click', UI.closeModal);
     $('#modalHost .modal-backdrop').addEventListener('click', UI.closeModal);
+  };
+
+  /** Keeps the toolbar button and the Export checkbox telling the same story. */
+  UI.syncAutoFit = function () {
+    var on = CMG.mapview.autoFitEnabled();
+    var btn = $('#btnAutoFit');
+    if (btn) {
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    }
+    var box = $('#autoFit');
+    if (box) box.checked = on;
   };
 
   UI.wireKeyboard = function () {

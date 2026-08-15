@@ -370,10 +370,12 @@
     'Sixteenth Street Trust', 'Highland Park Investments LLC',
     'Union Station Properties LP', 'Ballpark District Holdings LLC'];
 
+  /* Every county answers here, which is the one thing the demo cannot be
+     honest about — the banner says so, and each layer name repeats it. */
   CMG.parcels.describe = function () {
     return U.sleep(220).then(function () {
       return {
-        name: 'Demo County Parcels (simulated)',
+        name: 'Parcels (simulated)',
         geometryType: 'esriGeometryPolygon',
         fields: ['OBJECTID', 'SITUS_ADDRESS', 'SCHEDNUM', 'OWNER', 'ACRES', 'LAND_USE'],
         maxRecordCount: 1000,
@@ -420,14 +422,32 @@
     });
   };
 
-  CMG.parcels.loadPresets = function () {
-    return [
-      { id: 'demo', name: 'Demo County Parcels (simulated)', url: 'demo://parcels' },
-      { id: 'custom', name: 'Custom URL…', url: '' }
-    ];
+  CMG.parcels.savePreset = function () { return []; };
+
+  /* County lookup, offline. Picks whichever registered county centre is
+     nearest, so auto-detect behaves plausibly across the region. */
+  var COUNTY_POINTS = {
+    Denver: [39.74, -104.99], Adams: [39.87, -104.34], Arapahoe: [39.65, -104.34],
+    Jefferson: [39.58, -105.25], Douglas: [39.33, -104.93], Broomfield: [39.95, -105.05],
+    Boulder: [40.09, -105.36], Larimer: [40.67, -105.46], Weld: [40.55, -104.39],
+    'El Paso': [38.83, -104.53], Pueblo: [38.17, -104.51], Teller: [38.88, -105.16],
+    Elbert: [39.29, -104.14], Fremont: [38.47, -105.44], Summit: [39.63, -106.12],
+    Park: [39.12, -105.72], Routt: [40.48, -106.99], Eagle: [39.63, -106.70],
+    Grand: [40.10, -106.12], 'Clear Creek': [39.69, -105.64], Gilpin: [39.86, -105.52],
+    Lake: [39.20, -106.35], Chaffee: [38.75, -106.19]
   };
 
-  CMG.parcels.savePreset = function () { return []; };
+  CMG.parcels.countyAt = function (lat, lng) {
+    return U.sleep(200).then(function () {
+      var best = null, bestD = Infinity;
+      Object.keys(COUNTY_POINTS).forEach(function (name) {
+        var c = COUNTY_POINTS[name];
+        var d = U.distanceMiles({ lat: lat, lng: lng }, { lat: c[0], lng: c[1] });
+        if (d < bestD) { bestD = d; best = name; }
+      });
+      return bestD < 90 ? best : null;
+    });
+  };
 
   /* ------------------------------------------- sandbox-safe image delivery */
 
@@ -483,7 +503,10 @@
     });
 
     S.refreshLabel(st.subject);
-    st.parcelService = { presetId: 'demo', url: 'demo://parcels' };
+    // A real county from the registry, so the picker reads correctly; only the
+    // service behind it is simulated.
+    var denver = CMG.parcels.county('denver');
+    st.parcelService = { presetId: 'denver', url: denver ? denver.url : '' };
     st.style.radiusRings = '0.5, 1';
     st.exportCfg = { presetId: 'body-half', w: 6.5, h: 4.0, dpi: 300 };
   };

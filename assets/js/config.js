@@ -337,6 +337,7 @@
 
   /* --------------------------------------------------------------- defaults */
   CMG.DEFAULT_STYLE = {
+    autoFit: true,        // the map's job is showing subject-to-comp relation
     parcelFill: true,
     labelSize: 13,
     pinScale: 100,
