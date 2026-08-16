@@ -100,6 +100,7 @@
     document.getElementById('dimVal').textContent = s.style.basemapDim + '%';
     document.getElementById('radiusRings').value = s.style.radiusRings || '';
     document.getElementById('legendPos').value = s.style.legendPos;
+    document.getElementById('markerStyle').value = s.style.markerStyle || 'disc';
 
     [['toggleParcelFill', 'parcelFill'], ['toggleLabels', 'showLabels'],
      ['toggleLeaders', 'showLeaders'], ['toggleConnectors', 'showConnectors'],

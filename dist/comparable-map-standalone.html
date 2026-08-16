@@ -675,21 +675,34 @@ svg.leaflet-image-layer.leaflet-interactive path {
    step and the exported image is proportionally identical to the screen. */
 
 :root {
-  --bg: #eef1f5;
+  --bg: #F4F6F9;
   --panel: #ffffff;
-  --ink: #16202c;
-  --ink-soft: #5a6a7c;
-  --line: #d8dee7;
-  --line-soft: #e8edf3;
-  --accent: #1a56db;
-  --accent-dark: #12409f;
-  --good: #16794a;
-  --warn: #9a6100;
-  --bad: #b3261e;
-  --sidebar-w: 372px;
-  --radius: 8px;
-  --shadow: 0 1px 2px rgba(16, 32, 48, .08), 0 4px 16px rgba(16, 32, 48, .07);
+  --ink: #0F1B2A;
+  --ink-soft: #5A6B7F;
+  --ink-faint: #8A98A9;
+  --line: #DDE3EC;
+  --line-soft: #EDF1F6;
+  --accent: #1B4FD8;
+  --accent-dark: #143CA6;
+  --accent-wash: #EEF3FE;
+  --good: #0E7C5A;
+  --warn: #92600B;
+  --bad: #B3261E;
+  --sidebar-w: 380px;
+  --radius: 10px;
+  --radius-sm: 7px;
+
+  /* Two-part elevation: a tight contact shadow plus a wide soft one. A single
+     blurred shadow reads flat; the pair is what makes a card feel lifted. */
+  --lift-1: 0 1px 2px rgba(15, 27, 42, .07), 0 2px 8px rgba(15, 27, 42, .05);
+  --lift-2: 0 1px 2px rgba(15, 27, 42, .09), 0 8px 24px rgba(15, 27, 42, .10);
+  --lift-3: 0 2px 4px rgba(15, 27, 42, .10), 0 18px 44px rgba(15, 27, 42, .16);
+  --shadow: var(--lift-1);
 }
+
+/* Figures that sit in columns must line up — prices, distances, coordinates. */
+.legend-table, .lg-dist, .lbl-figure, #coordReadout, #mapCounter,
+.readout, .cand-coord, .loc-dist, .token-row { font-variant-numeric: tabular-nums; }
 
 * { box-sizing: border-box; }
 
@@ -727,71 +740,84 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 11px;
+  padding: 16px 18px 15px;
   border-bottom: 1px solid var(--line-soft);
 }
 
 .brand-mark {
   width: 34px; height: 34px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, var(--accent), #0f2d73);
+  border-radius: 9px;
+  background: var(--ink);
   color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: .5px;
+  font: 700 12px/1 "Segoe UI", Arial, sans-serif;
+  letter-spacing: .06em;
   display: grid;
   place-items: center;
   flex: none;
 }
 
-.brand-text { display: flex; flex-direction: column; min-width: 0; }
-.brand-text strong { font-size: 14px; }
+.brand-text { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.brand-text strong {
+  font: 700 14.5px/1.2 Georgia, "Times New Roman", serif;
+  letter-spacing: -.005em;
+}
 .brand-text span {
   font-size: 12px; color: var(--ink-soft);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* A segmented control rather than four underlined words — the sunken track
+   reads as one object with a selected element inside it. */
 .tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border-bottom: 1px solid var(--line);
-  background: #f7f9fc;
+  gap: 2px;
+  margin: 12px 14px 4px;
+  padding: 3px;
+  background: var(--line-soft);
+  border-radius: 9px;
 }
 
 .tab {
   border: 0;
   background: transparent;
-  padding: 11px 4px;
+  padding: 7px 4px;
   cursor: pointer;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink-soft);
-  border-bottom: 2px solid transparent;
+  border-radius: 7px;
   white-space: nowrap;
+  transition: background .14s, color .14s, box-shadow .14s;
 }
 .tab:hover { color: var(--ink); }
-.tab.is-active { color: var(--accent); border-bottom-color: var(--accent); background: #fff; }
+.tab.is-active {
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 27, 42, .10), 0 1px 1px rgba(15, 27, 42, .05);
+}
 
 .tab-body { overflow-y: auto; flex: 1; min-height: 0; }
-.tabpanel { display: none; padding: 12px; }
+.tabpanel { display: none; padding: 10px 14px 16px; }
 .tabpanel.is-active { display: block; }
 
 .panel {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 14px;
   margin-bottom: 12px;
+  box-shadow: var(--lift-1);
 }
 
 .panel-head {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 11px;
 }
 .panel-head h3 {
-  margin: 0; font-size: 12px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .6px; color: var(--ink-soft);
+  margin: 0; font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.1px; color: var(--ink-faint);
 }
 
 .pill {
@@ -843,16 +869,19 @@ textarea { resize: vertical; font-family: inherit; }
 .btn {
   border: 1px solid var(--line);
   background: #fff;
-  border-radius: 6px;
-  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
+  box-shadow: 0 1px 1.5px rgba(15, 27, 42, .05);
+  transition: background .13s, border-color .13s, box-shadow .13s;
 }
-.btn:hover { background: #f4f7fb; border-color: #c3ccda; }
-.btn:active { transform: translateY(1px); }
+.btn:hover { background: #FAFBFD; border-color: #C6CFDC; box-shadow: var(--lift-1); }
+.btn:active { transform: translateY(.5px); box-shadow: none; }
 .btn-primary {
   background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(20, 60, 166, .30), 0 2px 8px rgba(20, 60, 166, .18);
 }
 .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
 .btn-block { display: block; width: 100%; margin-bottom: 7px; }
@@ -906,20 +935,27 @@ details.sub[open] > summary::before { content: "− "; }
 
 .prop-card {
   border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 8px;
+  border-radius: var(--radius-sm);
+  padding: 9px;
   margin-bottom: 8px;
   background: #fff;
+  transition: border-color .13s, box-shadow .13s;
 }
-.prop-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26, 86, 219, .12); }
+.prop-card:hover { border-color: #C6CFDC; }
+.prop-card.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(27, 79, 216, .11);
+}
 
 .prop-head { display: flex; align-items: center; gap: 6px; }
 
 .prop-badge {
   flex: none;
-  width: 24px; height: 24px; border-radius: 50%;
-  color: #fff; font-size: 12px; font-weight: 700;
+  width: 25px; height: 25px; border-radius: 50%;
+  color: #fff; font-size: 11.5px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
   display: grid; place-items: center;
+  box-shadow: 0 1px 2px rgba(15, 27, 42, .20);
 }
 
 .prop-address {
@@ -975,22 +1011,31 @@ details.sub[open] > summary::before { content: "− "; }
 #stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 
 #toolbar {
-  display: flex; align-items: center; gap: 14px;
-  padding: 8px 12px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
   background: #fff;
   border-bottom: 1px solid var(--line);
 }
-.tool-group { display: flex; gap: 4px; }
+/* Grouped as one track so the modes read as a set, not six loose buttons. */
+.tool-group {
+  display: flex; gap: 2px;
+  padding: 3px;
+  background: var(--line-soft);
+  border-radius: 9px;
+}
 .spacer { flex: 1; }
 
 .tool {
-  border: 1px solid var(--line); background: #fff;
-  border-radius: 6px; padding: 6px 11px; cursor: pointer;
-  font-size: 13px; display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: transparent; color: var(--ink-soft);
+  border-radius: 7px; padding: 6px 11px; cursor: pointer;
+  font-size: 12.5px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 7px;
+  transition: background .13s, color .13s, box-shadow .13s;
 }
-.tool:hover { background: #f4f7fb; }
+.tool:hover { background: rgba(255, 255, 255, .75); color: var(--ink); }
 .tool.is-active {
-  background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+  background: #fff; color: var(--accent); font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 27, 42, .12), 0 1px 1px rgba(15, 27, 42, .06);
 }
 .tool-ico { font-size: 14px; line-height: 1; }
 .mode-hint { font-size: 12px; color: var(--ink-soft); text-align: right; }
@@ -998,16 +1043,19 @@ details.sub[open] > summary::before { content: "− "; }
 #canvasArea {
   flex: 1; min-height: 0;
   display: flex; align-items: center; justify-content: center;
-  padding: 14px;
+  padding: 20px;
+  /* A quiet graphite ground makes the white exhibit read as a sheet on a desk
+     rather than a panel in an app. */
   background:
-    repeating-conic-gradient(#e6eaf0 0% 25%, #eef1f5 0% 50%) 50% / 18px 18px;
+    radial-gradient(120% 90% at 50% 0%, #2A3646 0%, #1B2534 60%, #151E2B 100%);
 }
 
 #statusbar {
   display: flex; align-items: center; gap: 12px;
-  padding: 5px 12px;
+  padding: 7px 14px;
   background: #fff; border-top: 1px solid var(--line);
   font-size: 12px; color: var(--ink-soft);
+  letter-spacing: .005em;
 }
 #statusText.status-ok { color: var(--good); }
 #statusText.status-warn { color: var(--warn); }
@@ -1017,6 +1065,11 @@ details.sub[open] > summary::before { content: "− "; }
 /* ──────────────────────────── the map frame ──────────────────────────── */
 
 #mapFrame {
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, .06),
+    0 2px 6px rgba(0, 0, 0, .35),
+    0 24px 60px rgba(0, 0, 0, .45);
   --ui-scale: 1;
   --pin-scale: 1;
   --label-size: 13;
@@ -1050,24 +1103,29 @@ details.sub[open] > summary::before { content: "− "; }
 
 .pin-inner {
   position: relative;
-  width: 30px; height: 44px;
+  width: 34px; height: 44px;
   transform: scale(calc(var(--ui-scale) * var(--pin-scale)));
   transform-origin: 50% 100%;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45));
+  filter: drop-shadow(0 1px 1px rgba(15, 27, 42, .28))
+          drop-shadow(0 3px 6px rgba(15, 27, 42, .28));
 }
-.pin-inner.is-selected { filter: drop-shadow(0 0 5px rgba(26, 86, 219, .9)); }
+.pin-inner.is-selected {
+  filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0))
+          drop-shadow(0 0 6px rgba(27, 79, 216, .85));
+}
 
 .pin-num {
   position: absolute;
-  left: 0; top: 4px;
-  width: 30px;
+  left: 0;
+  width: 34px;
   text-align: center;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 22px;
-  font-family: "Segoe UI", Arial, sans-serif;
+  font: 700 13.5px/1 "Segoe UI", Arial, sans-serif;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
+.pin-disc .pin-num { top: 9.5px; }
+.pin-pin  .pin-num { top: 8.5px; }
 
 /* text labels ----------------------------------------------------------- */
 
@@ -1080,17 +1138,22 @@ details.sub[open] > summary::before { content: "− "; }
      explicit max-content width the label would shrink to min-content and
      hyphen-break words like "COMPARABLE" across lines. */
   width: max-content;
-  min-width: calc(var(--ui-scale) * 84px);
+  min-width: calc(var(--ui-scale) * 96px);
   max-width: calc(var(--ui-scale) * 250px);
-  padding: .34em .55em;
   background: var(--t-labelBg);
+  /* A real border, not a 0-spread shadow: html2canvas draws borders reliably
+     and shadows only sometimes, and this box has to survive the export.
+     For the same reason there is no overflow:hidden here — inside a
+     transformed Leaflet pane html2canvas mis-computes the clip box and eats
+     the top of the card. The heading rounds its own corners instead. */
   border: 1px solid var(--t-labelBorder);
-  border-left-width: .28em;
-  border-radius: .22em;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+  border-radius: .42em;
+  box-shadow:
+    0 .07em .14em rgba(15, 27, 42, .13),
+    0 .5em 1.05em rgba(15, 27, 42, .16);
   font-size: calc(var(--ui-scale) * var(--label-size) * 1px);
-  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
-  line-height: 1.28;
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  line-height: 1.32;
   color: var(--t-labelText);
   cursor: move;
   user-select: none;
@@ -1099,18 +1162,39 @@ details.sub[open] > summary::before { content: "− "; }
 }
 #mapFrame.hide-labels .cmg-label { display: none; }
 
+.cmg-label .lbl-body { padding: .46em .62em .5em; }
+
+/* Heading bar in the property's own colour — the tie between pin, parcel and
+   legend row, carried without a callout on the map. */
 .cmg-label .lbl-head {
-  font-weight: 800;
-  letter-spacing: .02em;
-  font-size: .92em;
+  margin: -.46em -.62em .4em;
+  padding: .32em .62em .3em;
+  border-radius: .34em .34em 0 0;   /* the card's radius, less its border */
+  background: var(--lc);
+  color: #fff;
+  font-weight: 700;
+  font-size: .78em;
+  letter-spacing: .085em;
   text-transform: uppercase;
 }
-.cmg-label .lbl-line { font-size: .95em; }
-.cmg-label.is-dragging { opacity: .85; box-shadow: 0 3px 10px rgba(0, 0, 0, .35); }
+
+.cmg-label .lbl-primary { font-weight: 600; font-size: .98em; }
+.cmg-label .lbl-place { font-size: .9em; opacity: .72; }
+.cmg-label .lbl-figure {
+  font-size: .9em;
+  opacity: .88;
+  font-variant-numeric: tabular-nums;
+}
+.cmg-label .lbl-figure:first-of-type { margin-top: .28em; }
+
+.cmg-label.is-dragging {
+  border-color: var(--lc);
+  box-shadow: 0 .8em 1.6em rgba(15, 27, 42, .28);
+}
 .cmg-label.is-editing {
   cursor: text; user-select: text;
-  outline: 2px solid var(--accent);
-  background: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 .5em 1.05em rgba(15, 27, 42, .16);
 }
 .cmg-label [contenteditable="true"] { outline: none; min-width: 4em; }
 
@@ -1138,20 +1222,28 @@ details.sub[open] > summary::before { content: "− "; }
 .ov-title .ov-scale { transform-origin: top left; }
 
 .title-block {
-  margin: 10px;
+  margin: 12px;
   background: var(--t-titleBg);
-  border: 1px solid var(--t-titleBorder);
-  border-left: 4px solid var(--t-titleAccent);
-  border-radius: 3px;
-  padding: 7px 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
-  max-width: 460px;
+  border-radius: 7px;
+  border-left: 3px solid var(--t-titleAccent);
+  padding: 9px 15px 10px;
+  box-shadow:
+    0 0 0 1px var(--t-titleBorder),
+    0 1px 2px rgba(15, 27, 42, .10),
+    0 8px 22px rgba(15, 27, 42, .13);
+  max-width: 470px;
 }
 .title-main {
-  font: 700 16px/1.2 Georgia, "Times New Roman", serif;
+  font: 700 17px/1.18 Georgia, "Times New Roman", serif;
+  letter-spacing: -.005em;
   color: var(--t-titleText);
 }
-.title-sub { font-size: 12px; color: var(--t-titleSub); margin-top: 2px; }
+.title-sub {
+  font: 400 11.5px/1.35 "Segoe UI", Arial, sans-serif;
+  letter-spacing: .015em;
+  color: var(--t-titleSub);
+  margin-top: 3px;
+}
 
 .ov-north { top: 0; right: 0; }
 .ov-north .ov-scale { transform-origin: top right; }
@@ -1169,34 +1261,48 @@ details.sub[open] > summary::before { content: "− "; }
 .ov-legend[data-pos="top-left"] .ov-scale { transform-origin: top left; }
 
 .legend-box {
-  margin: 10px;
+  margin: 12px;
   background: var(--t-legendBg);
-  border: 1px solid var(--t-legendBorder);
-  border-radius: 3px;
-  padding: 8px 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
-  max-width: 340px;
+  border-radius: 7px;
+  box-shadow:
+    0 0 0 1px var(--t-legendBorder),
+    0 1px 2px rgba(15, 27, 42, .10),
+    0 8px 22px rgba(15, 27, 42, .13);
+  max-width: 350px;
+  overflow: hidden;
 }
 .legend-title {
-  font: 700 11px/1 "Segoe UI", Arial, sans-serif;
+  font: 700 9.5px/1 "Segoe UI", Arial, sans-serif;
   text-transform: uppercase;
-  letter-spacing: .8px;
+  letter-spacing: 1.1px;
   color: var(--t-legendTitle);
-  margin-bottom: 6px;
+  padding: 9px 12px 8px;
   border-bottom: 1px solid var(--t-legendBorder);
-  padding-bottom: 4px;
 }
-.legend-table { border-collapse: collapse; font-size: 11.5px; }
-.legend-table td { padding: 2px 5px 2px 0; vertical-align: top; }
-.lg-key { width: 20px; }
+.legend-table {
+  border-collapse: collapse;
+  font-size: 11.5px;
+  margin: 5px 12px 9px;
+  font-variant-numeric: tabular-nums;
+}
+.legend-table td { padding: 3px 0; vertical-align: top; }
+.legend-table tr + tr td { border-top: 1px solid var(--t-legendBorder); }
+.lg-key { width: 24px; padding-right: 8px !important; }
 .lg-dot {
   display: inline-grid; place-items: center;
   width: 16px; height: 16px; border-radius: 50%;
-  color: #fff; font-size: 10px; font-weight: 800;
+  color: #fff; font-size: 9.5px; font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 27, 42, .22);
 }
-.lg-name { color: var(--t-legendText); }
-.lg-sub { display: block; color: var(--t-legendSub); font-size: 10.5px; }
-.lg-dist { color: var(--t-legendSub); white-space: nowrap; text-align: right; }
+.lg-name { color: var(--t-legendText); font-weight: 600; line-height: 1.3; }
+.lg-sub {
+  display: block; color: var(--t-legendSub);
+  font-size: 10.5px; font-weight: 400; margin-top: 1px;
+}
+.lg-dist {
+  color: var(--t-legendSub); white-space: nowrap; text-align: right;
+  padding-left: 12px !important; font-size: 10.5px;
+}
 
 /* leaflet chrome -------------------------------------------------------- */
 
@@ -1210,20 +1316,25 @@ details.sub[open] > summary::before { content: "− "; }
 .leaflet-right .leaflet-control { margin-right: calc(var(--ui-scale) * 10px); }
 
 .leaflet-control-attribution {
-  font-size: calc(var(--ui-scale) * 9px) !important;
-  background: rgba(255, 255, 255, .78) !important;
-  padding: 0 calc(var(--ui-scale) * 4px) !important;
+  font-size: calc(var(--ui-scale) * 8.5px) !important;
+  background: rgba(255, 255, 255, .72) !important;
+  padding: 0 calc(var(--ui-scale) * 5px) !important;
+  border-radius: calc(var(--ui-scale) * 3px) 0 0 0;
+  letter-spacing: .01em;
 }
 .leaflet-control-attribution a { color: #35495e; }
 
 .leaflet-control-scale-line {
-  font-size: calc(var(--ui-scale) * 10px);
-  line-height: 1.3;
-  padding: calc(var(--ui-scale) * 1px) calc(var(--ui-scale) * 5px);
-  border-width: 0 calc(var(--ui-scale) * 2px) calc(var(--ui-scale) * 2px);
+  font: 600 calc(var(--ui-scale) * 9.5px)/1.25 "Segoe UI", Arial, sans-serif;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+  padding: calc(var(--ui-scale) * 2px) calc(var(--ui-scale) * 6px)
+           calc(var(--ui-scale) * 1px);
+  border-width: 0 calc(var(--ui-scale) * 1.5px) calc(var(--ui-scale) * 1.5px);
   border-color: var(--t-scaleInk);
   background: var(--t-scaleBg);
   color: var(--t-scaleInk);
+  border-radius: 0 0 calc(var(--ui-scale) * 2px) calc(var(--ui-scale) * 2px);
   box-shadow: none;
 }
 #mapFrame.hide-scale .leaflet-control-scale { display: none; }
@@ -1385,7 +1496,7 @@ body.is-exporting #mapFrame.export-render {
 
 /* Maps-made counter — present, but not asking for attention. */
 #mapCounter {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--ink-soft);
   opacity: .45;
   font-variant-numeric: tabular-nums;
@@ -1645,6 +1756,12 @@ html, body { height: auto; margin: 0; padding: 0; background: #eef1f5; }
         <div class="panel">
           <div class="panel-head"><h3>Markers &amp; labels</h3></div>
           <p class="hint">Colours live on the <b>Theme</b> tab.</p>
+          <label class="field"><span>Marker style</span>
+            <select id="markerStyle">
+              <option value="disc">Disc — filled circle, modern</option>
+              <option value="pin">Pin — classic teardrop</option>
+            </select>
+          </label>
           <label class="field">
             <span>Label text size <b id="labelSizeVal">13 px</b></span>
             <input type="range" id="labelSize" min="9" max="24" value="13">
@@ -2391,7 +2508,7 @@ window.CMG = window.CMG || {};
     { key: 'subject',       group: 'Subject & comparables', label: 'Subject',            def: '#d61f26' },
 
     { key: 'pinStroke',     group: 'Pins',      label: 'Pin outline',          def: '#ffffff' },
-    { key: 'pinDisc',       group: 'Pins',      label: 'Pin centre',           def: '#ffffff' },
+    { key: 'pinDisc',       group: 'Pins',      label: 'Pin centre',           def: 'transparent' },
 
     { key: 'parcelOpacity', group: 'Parcels',   label: 'Parcel shading',       def: 18, kind: 'opacity' },
     { key: 'parcelStroke',  group: 'Parcels',   label: 'Parcel outline',       def: 'auto', auto: true },
@@ -2431,7 +2548,7 @@ window.CMG = window.CMG || {};
     {
       id: 'classic',
       name: 'Classic appraisal',
-      palette: ['#1a56db', '#0d7d5a', '#b3261e', '#7a3cb8', '#b26a00', '#0f6f86'],
+      palette: ['#1B4FD8', '#0E7C5A', '#B3261E', '#6D3BC4', '#A85B00', '#0D6E86'],
       tokens: {}
     },
     {
@@ -2484,6 +2601,7 @@ window.CMG = window.CMG || {};
   /* --------------------------------------------------------------- defaults */
   CMG.DEFAULT_STYLE = {
     autoFit: true,        // the map's job is showing subject-to-comp relation
+    markerStyle: 'disc',  // 'disc' | 'pin'
     parcelFill: true,
     labelSize: 13,
     pinScale: 100,
@@ -4037,19 +4155,41 @@ window.CMG = window.CMG || {};
 
   /* ------------------------------------------------------------------- pins */
 
+  /* Two marker forms. "disc" is the modern default — a filled circle with a
+     white ring and a short stem, which stays legible at small print sizes and
+     over busy imagery. "pin" keeps the classic teardrop for anyone who wants
+     it. Both are built from the same theme tokens. */
   function pinIcon(p) {
     var color = colorFor(p);
     var text = p.role === 'subject' ? 'S' : String(p.number || '');
     var selected = MV.selectedId === p.id ? ' is-selected' : '';
+    var ring = U.escapeHtml(token('pinStroke'));
+    var core = token('pinDisc');
+    var shape = Store.state.style.markerStyle === 'pin' ? 'pin' : 'disc';
+
+    var body;
+    if (shape === 'pin') {
+      body =
+        '<path class="pin-head" d="M17 42C17 42 30 25 30 15A13 13 0 1 0 4 15C4 25 17 42 17 42Z" ' +
+              'fill="var(--c)" stroke="' + ring + '" stroke-width="2.4" ' +
+              'stroke-linejoin="round" paint-order="stroke"/>' +
+        (core === 'transparent' ? '' :
+          '<circle class="pin-core" cx="17" cy="15" r="8.4" fill="' + U.escapeHtml(core) + '"/>');
+    } else {
+      body =
+        '<path class="pin-stem" d="M17 41.5 12.4 30.5h9.2Z" fill="var(--c)" ' +
+              'stroke="' + ring + '" stroke-width="2.2" stroke-linejoin="round" ' +
+              'paint-order="stroke"/>' +
+        '<circle class="pin-head" cx="17" cy="16" r="13" fill="var(--c)" ' +
+                'stroke="' + ring + '" stroke-width="2.4"/>' +
+        (core === 'transparent' ? '' :
+          '<circle class="pin-core" cx="17" cy="16" r="8.6" fill="' + U.escapeHtml(core) + '"/>');
+    }
+
     var html =
-      '<div class="pin-inner' + selected + '" style="--c:' + U.escapeHtml(color) + '">' +
-        '<svg viewBox="0 0 30 44" width="30" height="44">' +
-          '<path d="M15 43C15 43 28 25 28 15A13 13 0 1 0 2 15C2 25 15 43 15 43Z" ' +
-                'fill="var(--c)" stroke="' + U.escapeHtml(token('pinStroke')) + '" ' +
-                'stroke-width="2.5" stroke-linejoin="round" paint-order="stroke"/>' +
-          (token('pinDisc') === 'transparent' ? '' :
-            '<circle cx="15" cy="15" r="8.6" fill="' + U.escapeHtml(token('pinDisc')) + '"/>') +
-        '</svg>' +
+      '<div class="pin-inner pin-' + shape + selected + '" ' +
+           'style="--c:' + U.escapeHtml(color) + '">' +
+        '<svg viewBox="0 0 34 44" width="34" height="44">' + body + '</svg>' +
         '<span class="pin-num" style="color:' +
           U.escapeHtml(CMG.theme.pinNumberColor(p, Store.state.theme)) + '">' +
           U.escapeHtml(text) + '</span>' +
@@ -4058,25 +4198,34 @@ window.CMG = window.CMG || {};
     return L.divIcon({
       className: 'cmg-pin',
       html: html,
-      iconSize: [30, 44],
-      iconAnchor: [15, 44]
+      iconSize: [34, 44],
+      iconAnchor: [17, 44]
     });
   }
 
   /* ----------------------------------------------------------------- labels */
 
+  /* Line roles give the card its hierarchy: a heading bar, the street, the
+     place, then the figures. Classes are assigned by position, so hand-edited
+     text still reads sensibly rather than losing its shape. */
+  function lineClass(i) {
+    if (i === 0) return 'lbl-head';
+    if (i === 1) return 'lbl-line lbl-primary';
+    if (i === 2) return 'lbl-line lbl-place';
+    return 'lbl-line lbl-figure';
+  }
+
   function labelHtml(p) {
     var off = activeOffset(p);
     var lines = String(p.labelText || '').split('\n');
     var body = lines.map(function (line, i) {
-      var cls = i === 0 ? 'lbl-head' : 'lbl-line';
-      return '<div class="' + cls + '">' + U.escapeHtml(line) + '</div>';
+      return '<div class="' + lineClass(i) + '">' + U.escapeHtml(line) + '</div>';
     }).join('');
 
     return '<div class="cmg-label" data-id="' + p.id + '" ' +
            'style="transform:translate(calc(var(--ui-scale) * ' + off.x + 'px),' +
                                      'calc(var(--ui-scale) * ' + off.y + 'px));' +
-                  'border-color:' + U.escapeHtml(colorFor(p)) + '">' +
+                  '--lc:' + U.escapeHtml(colorFor(p)) + '">' +
              '<div class="lbl-body" data-role="text">' + body + '</div>' +
            '</div>';
   }
@@ -4103,6 +4252,26 @@ window.CMG = window.CMG || {};
     function (w, h, g) { return { x: -w / 2, y: g * 2 }; }           // S
   ];
 
+  /* Title block, legend, north arrow and scale bar occupy real space in the
+     exhibit. Label placement has to treat them as obstacles, or a comparable's
+     card ends up buried under the legend in the exported image. */
+  function furnitureBoxes() {
+    var mapRect = document.getElementById('map').getBoundingClientRect();
+    var out = [];
+    ['#ovTitle .title-block', '#ovLegend .legend-box', '#ovNorth svg',
+     '.leaflet-control-scale', '.leaflet-control-attribution'].forEach(function (sel) {
+      var el = document.querySelector(sel);
+      if (!el) return;
+      var host = el.closest('.ov');
+      if (host && host.hidden) return;
+      if (!el.offsetParent && !el.getClientRects().length) return;
+      var r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      out.push({ x: r.left - mapRect.left, y: r.top - mapRect.top, w: r.width, h: r.height });
+    });
+    return out;
+  }
+
   function overlapArea(a, b) {
     var dx = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
     var dy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
@@ -4124,9 +4293,12 @@ window.CMG = window.CMG || {};
 
     var size = MV.map.getSize();
     var pinS = MV.uiScale * (s.pinScale || 100) / 100;
-    var gap = 10 * MV.uiScale;
+    /* Clear the pin's own footprint, or every slot to the right of a pin pays
+       the same overlap penalty and the cost comparison is biased leftward. */
+    var gap = Math.max(10 * MV.uiScale, 16 * pinS);
 
     var pinBoxes = [];
+    var furniture = furnitureBoxes();
     var items = [];
 
     Store.located().forEach(function (p) {
@@ -4168,6 +4340,7 @@ window.CMG = window.CMG || {};
         var cost = i * 40;                       // mild preference for earlier slots
         placed.forEach(function (q) { cost += overlapArea(box, q) * 3; });
         pinBoxes.forEach(function (q) { cost += overlapArea(box, q) * 6; });
+        furniture.forEach(function (q) { cost += overlapArea(box, q) * 5; });
 
         // Keep it inside the frame, with an inset so a label never sits flush
         // against the edge of a printed exhibit.
@@ -4434,11 +4607,13 @@ window.CMG = window.CMG || {};
 
     drawRings();
     drawConnectors();
+    /* Legend and title first: label placement measures them as obstacles, so
+       they have to be at their final size before the labels are positioned. */
+    MV.renderLegend();
+    MV.renderTitle();
     MV.autoPlaceLabels();
     MV.updateLeaders();
     MV.maybeAutoFit();
-    MV.renderLegend();
-    MV.renderTitle();
   };
 
   function removeEntry(entry) {
@@ -4849,6 +5024,13 @@ window.CMG = window.CMG || {};
 
   MV.suspendAutoFit = false;
 
+  /* Room left around the content, in screen pixels: enough for a label stack
+     above and below the outermost pins. Split for fitBounds, summed for
+     getBoundsZoom, so the fit and the check always agree. */
+  var FIT_PAD_TL = [100, 130];
+  var FIT_PAD_BR = [100, 150];
+  var LONE_PIN_ZOOM = 17;
+
   /** Bounds covering every located pin and any parcel drawn. */
   MV.contentBounds = function () {
     var pts = Store.located().map(function (p) { return [p.lat, p.lng]; });
@@ -4868,15 +5050,33 @@ window.CMG = window.CMG || {};
     return MV.map.getBounds().pad(-0.10).contains(content);
   };
 
+  /** The zoom a fit would settle on right now. */
+  MV.fitZoom = function () {
+    var content = MV.contentBounds();
+    if (!content) return null;
+    if (Store.located().length < 2) return LONE_PIN_ZOOM;
+    var pad = L.point(FIT_PAD_TL[0] + FIT_PAD_BR[0], FIT_PAD_TL[1] + FIT_PAD_BR[1]);
+    return MV.map.getBoundsZoom(content, false, pad);
+  };
+
   MV.autoFitEnabled = function () {
     return Store.state.style.autoFit !== false;
   };
 
-  /** Refit if enabled and something has drifted off. */
+  /**
+   * Refit when the framing no longer shows the relationship well. Two ways it
+   * can go wrong, and both matter: something has drifted off the edge, or the
+   * view is far looser than a fit would be — pins clustered in the middle of an
+   * empty frame is just as useless as pins off the side.
+   */
   MV.maybeAutoFit = function () {
     if (MV.suspendAutoFit || !MV.autoFitEnabled()) return false;
     if (!Store.located().length) return false;
-    if (MV.allInView()) return false;
+
+    var want = MV.fitZoom();
+    var loose = want != null && Math.abs(want - MV.map.getZoom()) > 0.35;
+    if (MV.allInView() && !loose) return false;
+
     MV.fitAll();
     return true;
   };
@@ -4902,13 +5102,13 @@ window.CMG = window.CMG || {};
     });
     if (!pts.length) return false;
     if (pts.length === 1) {
-      MV.map.setView(pts[0], 17, { animate: false });
+      MV.map.setView(pts[0], LONE_PIN_ZOOM, { animate: false });
       return true;
     }
     // Extra top/left room so labels, title and legend are not clipped.
     MV.map.fitBounds(L.latLngBounds(pts), {
-      paddingTopLeft: [100, 130],
-      paddingBottomRight: [100, 150],
+      paddingTopLeft: FIT_PAD_TL,
+      paddingBottomRight: FIT_PAD_BR,
       animate: false
     });
     return true;
@@ -5364,12 +5564,25 @@ window.CMG = window.CMG || {};
       U.escapeHtml(placeholder || '') + '"></label>';
   }
 
+  /* Replacing the cards blurs whatever input was focused, and a blur handler
+     can ask for another render before this one has finished — the browser then
+     throws part-way through the assignment and leaves the list half-built.
+     Nested calls are folded into one repeat after the current pass. */
+  var rebuilding = false, rebuildAgain = false;
+
   UI.renderCards = function () {
-    UI.updateFirstRun();
-    $('#subjectCard').innerHTML = cardHtml(Store.state.subject);
-    $('#compList').innerHTML = Store.state.comps.map(cardHtml).join('') ||
-      '<p class="empty">No comparables yet. Add one below, or paste a list of addresses.</p>';
-    $('#compCount').textContent = String(Store.state.comps.length);
+    if (rebuilding) { rebuildAgain = true; return; }
+    rebuilding = true;
+    try {
+      UI.updateFirstRun();
+      $('#subjectCard').innerHTML = cardHtml(Store.state.subject);
+      $('#compList').innerHTML = Store.state.comps.map(cardHtml).join('') ||
+        '<p class="empty">No comparables yet. Add one below, or paste a list of addresses.</p>';
+      $('#compCount').textContent = String(Store.state.comps.length);
+    } finally {
+      rebuilding = false;
+    }
+    if (rebuildAgain) { rebuildAgain = false; UI.renderCards(); }
   };
 
   /* --------------------------------------------------------- card handlers */
@@ -5718,6 +5931,13 @@ window.CMG = window.CMG || {};
       CMG.mapview.updateLeaders();
     });
     $('#pinSizeVal').textContent = Store.state.style.pinScale + '%';
+
+    var marker = $('#markerStyle');
+    marker.value = Store.state.style.markerStyle || 'disc';
+    marker.addEventListener('change', function () {
+      Store.setStyle({ markerStyle: marker.value });
+      redraw();
+    });
 
     bindCheckbox('toggleParcelFill', 'parcelFill', redraw);
     bindCheckbox('toggleLabels', 'showLabels', redraw);
@@ -6614,6 +6834,8 @@ window.CMG = window.CMG || {};
         if (p) UI.geocodeProperty(p.id);
       });
       host.addEventListener('blur', function (ev) {
+        // A blur raised by our own card rebuild is not the user leaving a field.
+        if (rebuilding) return;
         if (!ev.target.classList || !ev.target.classList.contains('prop-address')) return;
         var p = cardProperty(ev.target);
         if (p && p.address && p.lat == null && !UI.busy[p.id]) UI.geocodeProperty(p.id, true);
@@ -6737,6 +6959,7 @@ window.CMG = window.CMG || {};
     document.getElementById('dimVal').textContent = s.style.basemapDim + '%';
     document.getElementById('radiusRings').value = s.style.radiusRings || '';
     document.getElementById('legendPos').value = s.style.legendPos;
+    document.getElementById('markerStyle').value = s.style.markerStyle || 'disc';
 
     [['toggleParcelFill', 'parcelFill'], ['toggleLabels', 'showLabels'],
      ['toggleLeaders', 'showLeaders'], ['toggleConnectors', 'showConnectors'],

@@ -199,12 +199,25 @@
       U.escapeHtml(placeholder || '') + '"></label>';
   }
 
+  /* Replacing the cards blurs whatever input was focused, and a blur handler
+     can ask for another render before this one has finished — the browser then
+     throws part-way through the assignment and leaves the list half-built.
+     Nested calls are folded into one repeat after the current pass. */
+  var rebuilding = false, rebuildAgain = false;
+
   UI.renderCards = function () {
-    UI.updateFirstRun();
-    $('#subjectCard').innerHTML = cardHtml(Store.state.subject);
-    $('#compList').innerHTML = Store.state.comps.map(cardHtml).join('') ||
-      '<p class="empty">No comparables yet. Add one below, or paste a list of addresses.</p>';
-    $('#compCount').textContent = String(Store.state.comps.length);
+    if (rebuilding) { rebuildAgain = true; return; }
+    rebuilding = true;
+    try {
+      UI.updateFirstRun();
+      $('#subjectCard').innerHTML = cardHtml(Store.state.subject);
+      $('#compList').innerHTML = Store.state.comps.map(cardHtml).join('') ||
+        '<p class="empty">No comparables yet. Add one below, or paste a list of addresses.</p>';
+      $('#compCount').textContent = String(Store.state.comps.length);
+    } finally {
+      rebuilding = false;
+    }
+    if (rebuildAgain) { rebuildAgain = false; UI.renderCards(); }
   };
 
   /* --------------------------------------------------------- card handlers */
@@ -553,6 +566,13 @@
       CMG.mapview.updateLeaders();
     });
     $('#pinSizeVal').textContent = Store.state.style.pinScale + '%';
+
+    var marker = $('#markerStyle');
+    marker.value = Store.state.style.markerStyle || 'disc';
+    marker.addEventListener('change', function () {
+      Store.setStyle({ markerStyle: marker.value });
+      redraw();
+    });
 
     bindCheckbox('toggleParcelFill', 'parcelFill', redraw);
     bindCheckbox('toggleLabels', 'showLabels', redraw);
@@ -1449,6 +1469,8 @@
         if (p) UI.geocodeProperty(p.id);
       });
       host.addEventListener('blur', function (ev) {
+        // A blur raised by our own card rebuild is not the user leaving a field.
+        if (rebuilding) return;
         if (!ev.target.classList || !ev.target.classList.contains('prop-address')) return;
         var p = cardProperty(ev.target);
         if (p && p.address && p.lat == null && !UI.busy[p.id]) UI.geocodeProperty(p.id, true);

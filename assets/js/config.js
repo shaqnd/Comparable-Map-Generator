@@ -245,7 +245,7 @@
     { key: 'subject',       group: 'Subject & comparables', label: 'Subject',            def: '#d61f26' },
 
     { key: 'pinStroke',     group: 'Pins',      label: 'Pin outline',          def: '#ffffff' },
-    { key: 'pinDisc',       group: 'Pins',      label: 'Pin centre',           def: '#ffffff' },
+    { key: 'pinDisc',       group: 'Pins',      label: 'Pin centre',           def: 'transparent' },
 
     { key: 'parcelOpacity', group: 'Parcels',   label: 'Parcel shading',       def: 18, kind: 'opacity' },
     { key: 'parcelStroke',  group: 'Parcels',   label: 'Parcel outline',       def: 'auto', auto: true },
@@ -285,7 +285,7 @@
     {
       id: 'classic',
       name: 'Classic appraisal',
-      palette: ['#1a56db', '#0d7d5a', '#b3261e', '#7a3cb8', '#b26a00', '#0f6f86'],
+      palette: ['#1B4FD8', '#0E7C5A', '#B3261E', '#6D3BC4', '#A85B00', '#0D6E86'],
       tokens: {}
     },
     {
@@ -338,6 +338,7 @@
   /* --------------------------------------------------------------- defaults */
   CMG.DEFAULT_STYLE = {
     autoFit: true,        // the map's job is showing subject-to-comp relation
+    markerStyle: 'disc',  // 'disc' | 'pin'
     parcelFill: true,
     labelSize: 13,
     pinScale: 100,

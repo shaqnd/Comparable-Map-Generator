@@ -7,21 +7,34 @@
    step and the exported image is proportionally identical to the screen. */
 
 :root {
-  --bg: #eef1f5;
+  --bg: #F4F6F9;
   --panel: #ffffff;
-  --ink: #16202c;
-  --ink-soft: #5a6a7c;
-  --line: #d8dee7;
-  --line-soft: #e8edf3;
-  --accent: #1a56db;
-  --accent-dark: #12409f;
-  --good: #16794a;
-  --warn: #9a6100;
-  --bad: #b3261e;
-  --sidebar-w: 372px;
-  --radius: 8px;
-  --shadow: 0 1px 2px rgba(16, 32, 48, .08), 0 4px 16px rgba(16, 32, 48, .07);
+  --ink: #0F1B2A;
+  --ink-soft: #5A6B7F;
+  --ink-faint: #8A98A9;
+  --line: #DDE3EC;
+  --line-soft: #EDF1F6;
+  --accent: #1B4FD8;
+  --accent-dark: #143CA6;
+  --accent-wash: #EEF3FE;
+  --good: #0E7C5A;
+  --warn: #92600B;
+  --bad: #B3261E;
+  --sidebar-w: 380px;
+  --radius: 10px;
+  --radius-sm: 7px;
+
+  /* Two-part elevation: a tight contact shadow plus a wide soft one. A single
+     blurred shadow reads flat; the pair is what makes a card feel lifted. */
+  --lift-1: 0 1px 2px rgba(15, 27, 42, .07), 0 2px 8px rgba(15, 27, 42, .05);
+  --lift-2: 0 1px 2px rgba(15, 27, 42, .09), 0 8px 24px rgba(15, 27, 42, .10);
+  --lift-3: 0 2px 4px rgba(15, 27, 42, .10), 0 18px 44px rgba(15, 27, 42, .16);
+  --shadow: var(--lift-1);
 }
+
+/* Figures that sit in columns must line up — prices, distances, coordinates. */
+.legend-table, .lg-dist, .lbl-figure, #coordReadout, #mapCounter,
+.readout, .cand-coord, .loc-dist, .token-row { font-variant-numeric: tabular-nums; }
 
 * { box-sizing: border-box; }
 
@@ -59,71 +72,84 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 11px;
+  padding: 16px 18px 15px;
   border-bottom: 1px solid var(--line-soft);
 }
 
 .brand-mark {
   width: 34px; height: 34px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, var(--accent), #0f2d73);
+  border-radius: 9px;
+  background: var(--ink);
   color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: .5px;
+  font: 700 12px/1 "Segoe UI", Arial, sans-serif;
+  letter-spacing: .06em;
   display: grid;
   place-items: center;
   flex: none;
 }
 
-.brand-text { display: flex; flex-direction: column; min-width: 0; }
-.brand-text strong { font-size: 14px; }
+.brand-text { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.brand-text strong {
+  font: 700 14.5px/1.2 Georgia, "Times New Roman", serif;
+  letter-spacing: -.005em;
+}
 .brand-text span {
   font-size: 12px; color: var(--ink-soft);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* A segmented control rather than four underlined words — the sunken track
+   reads as one object with a selected element inside it. */
 .tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border-bottom: 1px solid var(--line);
-  background: #f7f9fc;
+  gap: 2px;
+  margin: 12px 14px 4px;
+  padding: 3px;
+  background: var(--line-soft);
+  border-radius: 9px;
 }
 
 .tab {
   border: 0;
   background: transparent;
-  padding: 11px 4px;
+  padding: 7px 4px;
   cursor: pointer;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink-soft);
-  border-bottom: 2px solid transparent;
+  border-radius: 7px;
   white-space: nowrap;
+  transition: background .14s, color .14s, box-shadow .14s;
 }
 .tab:hover { color: var(--ink); }
-.tab.is-active { color: var(--accent); border-bottom-color: var(--accent); background: #fff; }
+.tab.is-active {
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 27, 42, .10), 0 1px 1px rgba(15, 27, 42, .05);
+}
 
 .tab-body { overflow-y: auto; flex: 1; min-height: 0; }
-.tabpanel { display: none; padding: 12px; }
+.tabpanel { display: none; padding: 10px 14px 16px; }
 .tabpanel.is-active { display: block; }
 
 .panel {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 14px;
   margin-bottom: 12px;
+  box-shadow: var(--lift-1);
 }
 
 .panel-head {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 11px;
 }
 .panel-head h3 {
-  margin: 0; font-size: 12px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .6px; color: var(--ink-soft);
+  margin: 0; font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.1px; color: var(--ink-faint);
 }
 
 .pill {
@@ -175,16 +201,19 @@ textarea { resize: vertical; font-family: inherit; }
 .btn {
   border: 1px solid var(--line);
   background: #fff;
-  border-radius: 6px;
-  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
+  box-shadow: 0 1px 1.5px rgba(15, 27, 42, .05);
+  transition: background .13s, border-color .13s, box-shadow .13s;
 }
-.btn:hover { background: #f4f7fb; border-color: #c3ccda; }
-.btn:active { transform: translateY(1px); }
+.btn:hover { background: #FAFBFD; border-color: #C6CFDC; box-shadow: var(--lift-1); }
+.btn:active { transform: translateY(.5px); box-shadow: none; }
 .btn-primary {
   background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(20, 60, 166, .30), 0 2px 8px rgba(20, 60, 166, .18);
 }
 .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
 .btn-block { display: block; width: 100%; margin-bottom: 7px; }
@@ -238,20 +267,27 @@ details.sub[open] > summary::before { content: "− "; }
 
 .prop-card {
   border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 8px;
+  border-radius: var(--radius-sm);
+  padding: 9px;
   margin-bottom: 8px;
   background: #fff;
+  transition: border-color .13s, box-shadow .13s;
 }
-.prop-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26, 86, 219, .12); }
+.prop-card:hover { border-color: #C6CFDC; }
+.prop-card.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(27, 79, 216, .11);
+}
 
 .prop-head { display: flex; align-items: center; gap: 6px; }
 
 .prop-badge {
   flex: none;
-  width: 24px; height: 24px; border-radius: 50%;
-  color: #fff; font-size: 12px; font-weight: 700;
+  width: 25px; height: 25px; border-radius: 50%;
+  color: #fff; font-size: 11.5px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
   display: grid; place-items: center;
+  box-shadow: 0 1px 2px rgba(15, 27, 42, .20);
 }
 
 .prop-address {
@@ -307,22 +343,31 @@ details.sub[open] > summary::before { content: "− "; }
 #stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 
 #toolbar {
-  display: flex; align-items: center; gap: 14px;
-  padding: 8px 12px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
   background: #fff;
   border-bottom: 1px solid var(--line);
 }
-.tool-group { display: flex; gap: 4px; }
+/* Grouped as one track so the modes read as a set, not six loose buttons. */
+.tool-group {
+  display: flex; gap: 2px;
+  padding: 3px;
+  background: var(--line-soft);
+  border-radius: 9px;
+}
 .spacer { flex: 1; }
 
 .tool {
-  border: 1px solid var(--line); background: #fff;
-  border-radius: 6px; padding: 6px 11px; cursor: pointer;
-  font-size: 13px; display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: transparent; color: var(--ink-soft);
+  border-radius: 7px; padding: 6px 11px; cursor: pointer;
+  font-size: 12.5px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 7px;
+  transition: background .13s, color .13s, box-shadow .13s;
 }
-.tool:hover { background: #f4f7fb; }
+.tool:hover { background: rgba(255, 255, 255, .75); color: var(--ink); }
 .tool.is-active {
-  background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+  background: #fff; color: var(--accent); font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 27, 42, .12), 0 1px 1px rgba(15, 27, 42, .06);
 }
 .tool-ico { font-size: 14px; line-height: 1; }
 .mode-hint { font-size: 12px; color: var(--ink-soft); text-align: right; }
@@ -330,16 +375,19 @@ details.sub[open] > summary::before { content: "− "; }
 #canvasArea {
   flex: 1; min-height: 0;
   display: flex; align-items: center; justify-content: center;
-  padding: 14px;
+  padding: 20px;
+  /* A quiet graphite ground makes the white exhibit read as a sheet on a desk
+     rather than a panel in an app. */
   background:
-    repeating-conic-gradient(#e6eaf0 0% 25%, #eef1f5 0% 50%) 50% / 18px 18px;
+    radial-gradient(120% 90% at 50% 0%, #2A3646 0%, #1B2534 60%, #151E2B 100%);
 }
 
 #statusbar {
   display: flex; align-items: center; gap: 12px;
-  padding: 5px 12px;
+  padding: 7px 14px;
   background: #fff; border-top: 1px solid var(--line);
   font-size: 12px; color: var(--ink-soft);
+  letter-spacing: .005em;
 }
 #statusText.status-ok { color: var(--good); }
 #statusText.status-warn { color: var(--warn); }
@@ -349,6 +397,11 @@ details.sub[open] > summary::before { content: "− "; }
 /* ──────────────────────────── the map frame ──────────────────────────── */
 
 #mapFrame {
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, .06),
+    0 2px 6px rgba(0, 0, 0, .35),
+    0 24px 60px rgba(0, 0, 0, .45);
   --ui-scale: 1;
   --pin-scale: 1;
   --label-size: 13;
@@ -382,24 +435,29 @@ details.sub[open] > summary::before { content: "− "; }
 
 .pin-inner {
   position: relative;
-  width: 30px; height: 44px;
+  width: 34px; height: 44px;
   transform: scale(calc(var(--ui-scale) * var(--pin-scale)));
   transform-origin: 50% 100%;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45));
+  filter: drop-shadow(0 1px 1px rgba(15, 27, 42, .28))
+          drop-shadow(0 3px 6px rgba(15, 27, 42, .28));
 }
-.pin-inner.is-selected { filter: drop-shadow(0 0 5px rgba(26, 86, 219, .9)); }
+.pin-inner.is-selected {
+  filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0))
+          drop-shadow(0 0 6px rgba(27, 79, 216, .85));
+}
 
 .pin-num {
   position: absolute;
-  left: 0; top: 4px;
-  width: 30px;
+  left: 0;
+  width: 34px;
   text-align: center;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 22px;
-  font-family: "Segoe UI", Arial, sans-serif;
+  font: 700 13.5px/1 "Segoe UI", Arial, sans-serif;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
+.pin-disc .pin-num { top: 9.5px; }
+.pin-pin  .pin-num { top: 8.5px; }
 
 /* text labels ----------------------------------------------------------- */
 
@@ -412,17 +470,22 @@ details.sub[open] > summary::before { content: "− "; }
      explicit max-content width the label would shrink to min-content and
      hyphen-break words like "COMPARABLE" across lines. */
   width: max-content;
-  min-width: calc(var(--ui-scale) * 84px);
+  min-width: calc(var(--ui-scale) * 96px);
   max-width: calc(var(--ui-scale) * 250px);
-  padding: .34em .55em;
   background: var(--t-labelBg);
+  /* A real border, not a 0-spread shadow: html2canvas draws borders reliably
+     and shadows only sometimes, and this box has to survive the export.
+     For the same reason there is no overflow:hidden here — inside a
+     transformed Leaflet pane html2canvas mis-computes the clip box and eats
+     the top of the card. The heading rounds its own corners instead. */
   border: 1px solid var(--t-labelBorder);
-  border-left-width: .28em;
-  border-radius: .22em;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+  border-radius: .42em;
+  box-shadow:
+    0 .07em .14em rgba(15, 27, 42, .13),
+    0 .5em 1.05em rgba(15, 27, 42, .16);
   font-size: calc(var(--ui-scale) * var(--label-size) * 1px);
-  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
-  line-height: 1.28;
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  line-height: 1.32;
   color: var(--t-labelText);
   cursor: move;
   user-select: none;
@@ -431,18 +494,39 @@ details.sub[open] > summary::before { content: "− "; }
 }
 #mapFrame.hide-labels .cmg-label { display: none; }
 
+.cmg-label .lbl-body { padding: .46em .62em .5em; }
+
+/* Heading bar in the property's own colour — the tie between pin, parcel and
+   legend row, carried without a callout on the map. */
 .cmg-label .lbl-head {
-  font-weight: 800;
-  letter-spacing: .02em;
-  font-size: .92em;
+  margin: -.46em -.62em .4em;
+  padding: .32em .62em .3em;
+  border-radius: .34em .34em 0 0;   /* the card's radius, less its border */
+  background: var(--lc);
+  color: #fff;
+  font-weight: 700;
+  font-size: .78em;
+  letter-spacing: .085em;
   text-transform: uppercase;
 }
-.cmg-label .lbl-line { font-size: .95em; }
-.cmg-label.is-dragging { opacity: .85; box-shadow: 0 3px 10px rgba(0, 0, 0, .35); }
+
+.cmg-label .lbl-primary { font-weight: 600; font-size: .98em; }
+.cmg-label .lbl-place { font-size: .9em; opacity: .72; }
+.cmg-label .lbl-figure {
+  font-size: .9em;
+  opacity: .88;
+  font-variant-numeric: tabular-nums;
+}
+.cmg-label .lbl-figure:first-of-type { margin-top: .28em; }
+
+.cmg-label.is-dragging {
+  border-color: var(--lc);
+  box-shadow: 0 .8em 1.6em rgba(15, 27, 42, .28);
+}
 .cmg-label.is-editing {
   cursor: text; user-select: text;
-  outline: 2px solid var(--accent);
-  background: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 .5em 1.05em rgba(15, 27, 42, .16);
 }
 .cmg-label [contenteditable="true"] { outline: none; min-width: 4em; }
 
@@ -470,20 +554,28 @@ details.sub[open] > summary::before { content: "− "; }
 .ov-title .ov-scale { transform-origin: top left; }
 
 .title-block {
-  margin: 10px;
+  margin: 12px;
   background: var(--t-titleBg);
-  border: 1px solid var(--t-titleBorder);
-  border-left: 4px solid var(--t-titleAccent);
-  border-radius: 3px;
-  padding: 7px 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
-  max-width: 460px;
+  border-radius: 7px;
+  border-left: 3px solid var(--t-titleAccent);
+  padding: 9px 15px 10px;
+  box-shadow:
+    0 0 0 1px var(--t-titleBorder),
+    0 1px 2px rgba(15, 27, 42, .10),
+    0 8px 22px rgba(15, 27, 42, .13);
+  max-width: 470px;
 }
 .title-main {
-  font: 700 16px/1.2 Georgia, "Times New Roman", serif;
+  font: 700 17px/1.18 Georgia, "Times New Roman", serif;
+  letter-spacing: -.005em;
   color: var(--t-titleText);
 }
-.title-sub { font-size: 12px; color: var(--t-titleSub); margin-top: 2px; }
+.title-sub {
+  font: 400 11.5px/1.35 "Segoe UI", Arial, sans-serif;
+  letter-spacing: .015em;
+  color: var(--t-titleSub);
+  margin-top: 3px;
+}
 
 .ov-north { top: 0; right: 0; }
 .ov-north .ov-scale { transform-origin: top right; }
@@ -501,34 +593,48 @@ details.sub[open] > summary::before { content: "− "; }
 .ov-legend[data-pos="top-left"] .ov-scale { transform-origin: top left; }
 
 .legend-box {
-  margin: 10px;
+  margin: 12px;
   background: var(--t-legendBg);
-  border: 1px solid var(--t-legendBorder);
-  border-radius: 3px;
-  padding: 8px 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
-  max-width: 340px;
+  border-radius: 7px;
+  box-shadow:
+    0 0 0 1px var(--t-legendBorder),
+    0 1px 2px rgba(15, 27, 42, .10),
+    0 8px 22px rgba(15, 27, 42, .13);
+  max-width: 350px;
+  overflow: hidden;
 }
 .legend-title {
-  font: 700 11px/1 "Segoe UI", Arial, sans-serif;
+  font: 700 9.5px/1 "Segoe UI", Arial, sans-serif;
   text-transform: uppercase;
-  letter-spacing: .8px;
+  letter-spacing: 1.1px;
   color: var(--t-legendTitle);
-  margin-bottom: 6px;
+  padding: 9px 12px 8px;
   border-bottom: 1px solid var(--t-legendBorder);
-  padding-bottom: 4px;
 }
-.legend-table { border-collapse: collapse; font-size: 11.5px; }
-.legend-table td { padding: 2px 5px 2px 0; vertical-align: top; }
-.lg-key { width: 20px; }
+.legend-table {
+  border-collapse: collapse;
+  font-size: 11.5px;
+  margin: 5px 12px 9px;
+  font-variant-numeric: tabular-nums;
+}
+.legend-table td { padding: 3px 0; vertical-align: top; }
+.legend-table tr + tr td { border-top: 1px solid var(--t-legendBorder); }
+.lg-key { width: 24px; padding-right: 8px !important; }
 .lg-dot {
   display: inline-grid; place-items: center;
   width: 16px; height: 16px; border-radius: 50%;
-  color: #fff; font-size: 10px; font-weight: 800;
+  color: #fff; font-size: 9.5px; font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 27, 42, .22);
 }
-.lg-name { color: var(--t-legendText); }
-.lg-sub { display: block; color: var(--t-legendSub); font-size: 10.5px; }
-.lg-dist { color: var(--t-legendSub); white-space: nowrap; text-align: right; }
+.lg-name { color: var(--t-legendText); font-weight: 600; line-height: 1.3; }
+.lg-sub {
+  display: block; color: var(--t-legendSub);
+  font-size: 10.5px; font-weight: 400; margin-top: 1px;
+}
+.lg-dist {
+  color: var(--t-legendSub); white-space: nowrap; text-align: right;
+  padding-left: 12px !important; font-size: 10.5px;
+}
 
 /* leaflet chrome -------------------------------------------------------- */
 
@@ -542,20 +648,25 @@ details.sub[open] > summary::before { content: "− "; }
 .leaflet-right .leaflet-control { margin-right: calc(var(--ui-scale) * 10px); }
 
 .leaflet-control-attribution {
-  font-size: calc(var(--ui-scale) * 9px) !important;
-  background: rgba(255, 255, 255, .78) !important;
-  padding: 0 calc(var(--ui-scale) * 4px) !important;
+  font-size: calc(var(--ui-scale) * 8.5px) !important;
+  background: rgba(255, 255, 255, .72) !important;
+  padding: 0 calc(var(--ui-scale) * 5px) !important;
+  border-radius: calc(var(--ui-scale) * 3px) 0 0 0;
+  letter-spacing: .01em;
 }
 .leaflet-control-attribution a { color: #35495e; }
 
 .leaflet-control-scale-line {
-  font-size: calc(var(--ui-scale) * 10px);
-  line-height: 1.3;
-  padding: calc(var(--ui-scale) * 1px) calc(var(--ui-scale) * 5px);
-  border-width: 0 calc(var(--ui-scale) * 2px) calc(var(--ui-scale) * 2px);
+  font: 600 calc(var(--ui-scale) * 9.5px)/1.25 "Segoe UI", Arial, sans-serif;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+  padding: calc(var(--ui-scale) * 2px) calc(var(--ui-scale) * 6px)
+           calc(var(--ui-scale) * 1px);
+  border-width: 0 calc(var(--ui-scale) * 1.5px) calc(var(--ui-scale) * 1.5px);
   border-color: var(--t-scaleInk);
   background: var(--t-scaleBg);
   color: var(--t-scaleInk);
+  border-radius: 0 0 calc(var(--ui-scale) * 2px) calc(var(--ui-scale) * 2px);
   box-shadow: none;
 }
 #mapFrame.hide-scale .leaflet-control-scale { display: none; }
@@ -717,7 +828,7 @@ body.is-exporting #mapFrame.export-render {
 
 /* Maps-made counter — present, but not asking for attention. */
 #mapCounter {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--ink-soft);
   opacity: .45;
   font-variant-numeric: tabular-nums;

@@ -181,19 +181,41 @@
 
   /* ------------------------------------------------------------------- pins */
 
+  /* Two marker forms. "disc" is the modern default — a filled circle with a
+     white ring and a short stem, which stays legible at small print sizes and
+     over busy imagery. "pin" keeps the classic teardrop for anyone who wants
+     it. Both are built from the same theme tokens. */
   function pinIcon(p) {
     var color = colorFor(p);
     var text = p.role === 'subject' ? 'S' : String(p.number || '');
     var selected = MV.selectedId === p.id ? ' is-selected' : '';
+    var ring = U.escapeHtml(token('pinStroke'));
+    var core = token('pinDisc');
+    var shape = Store.state.style.markerStyle === 'pin' ? 'pin' : 'disc';
+
+    var body;
+    if (shape === 'pin') {
+      body =
+        '<path class="pin-head" d="M17 42C17 42 30 25 30 15A13 13 0 1 0 4 15C4 25 17 42 17 42Z" ' +
+              'fill="var(--c)" stroke="' + ring + '" stroke-width="2.4" ' +
+              'stroke-linejoin="round" paint-order="stroke"/>' +
+        (core === 'transparent' ? '' :
+          '<circle class="pin-core" cx="17" cy="15" r="8.4" fill="' + U.escapeHtml(core) + '"/>');
+    } else {
+      body =
+        '<path class="pin-stem" d="M17 41.5 12.4 30.5h9.2Z" fill="var(--c)" ' +
+              'stroke="' + ring + '" stroke-width="2.2" stroke-linejoin="round" ' +
+              'paint-order="stroke"/>' +
+        '<circle class="pin-head" cx="17" cy="16" r="13" fill="var(--c)" ' +
+                'stroke="' + ring + '" stroke-width="2.4"/>' +
+        (core === 'transparent' ? '' :
+          '<circle class="pin-core" cx="17" cy="16" r="8.6" fill="' + U.escapeHtml(core) + '"/>');
+    }
+
     var html =
-      '<div class="pin-inner' + selected + '" style="--c:' + U.escapeHtml(color) + '">' +
-        '<svg viewBox="0 0 30 44" width="30" height="44">' +
-          '<path d="M15 43C15 43 28 25 28 15A13 13 0 1 0 2 15C2 25 15 43 15 43Z" ' +
-                'fill="var(--c)" stroke="' + U.escapeHtml(token('pinStroke')) + '" ' +
-                'stroke-width="2.5" stroke-linejoin="round" paint-order="stroke"/>' +
-          (token('pinDisc') === 'transparent' ? '' :
-            '<circle cx="15" cy="15" r="8.6" fill="' + U.escapeHtml(token('pinDisc')) + '"/>') +
-        '</svg>' +
+      '<div class="pin-inner pin-' + shape + selected + '" ' +
+           'style="--c:' + U.escapeHtml(color) + '">' +
+        '<svg viewBox="0 0 34 44" width="34" height="44">' + body + '</svg>' +
         '<span class="pin-num" style="color:' +
           U.escapeHtml(CMG.theme.pinNumberColor(p, Store.state.theme)) + '">' +
           U.escapeHtml(text) + '</span>' +
@@ -202,25 +224,34 @@
     return L.divIcon({
       className: 'cmg-pin',
       html: html,
-      iconSize: [30, 44],
-      iconAnchor: [15, 44]
+      iconSize: [34, 44],
+      iconAnchor: [17, 44]
     });
   }
 
   /* ----------------------------------------------------------------- labels */
 
+  /* Line roles give the card its hierarchy: a heading bar, the street, the
+     place, then the figures. Classes are assigned by position, so hand-edited
+     text still reads sensibly rather than losing its shape. */
+  function lineClass(i) {
+    if (i === 0) return 'lbl-head';
+    if (i === 1) return 'lbl-line lbl-primary';
+    if (i === 2) return 'lbl-line lbl-place';
+    return 'lbl-line lbl-figure';
+  }
+
   function labelHtml(p) {
     var off = activeOffset(p);
     var lines = String(p.labelText || '').split('\n');
     var body = lines.map(function (line, i) {
-      var cls = i === 0 ? 'lbl-head' : 'lbl-line';
-      return '<div class="' + cls + '">' + U.escapeHtml(line) + '</div>';
+      return '<div class="' + lineClass(i) + '">' + U.escapeHtml(line) + '</div>';
     }).join('');
 
     return '<div class="cmg-label" data-id="' + p.id + '" ' +
            'style="transform:translate(calc(var(--ui-scale) * ' + off.x + 'px),' +
                                      'calc(var(--ui-scale) * ' + off.y + 'px));' +
-                  'border-color:' + U.escapeHtml(colorFor(p)) + '">' +
+                  '--lc:' + U.escapeHtml(colorFor(p)) + '">' +
              '<div class="lbl-body" data-role="text">' + body + '</div>' +
            '</div>';
   }
@@ -247,6 +278,26 @@
     function (w, h, g) { return { x: -w / 2, y: g * 2 }; }           // S
   ];
 
+  /* Title block, legend, north arrow and scale bar occupy real space in the
+     exhibit. Label placement has to treat them as obstacles, or a comparable's
+     card ends up buried under the legend in the exported image. */
+  function furnitureBoxes() {
+    var mapRect = document.getElementById('map').getBoundingClientRect();
+    var out = [];
+    ['#ovTitle .title-block', '#ovLegend .legend-box', '#ovNorth svg',
+     '.leaflet-control-scale', '.leaflet-control-attribution'].forEach(function (sel) {
+      var el = document.querySelector(sel);
+      if (!el) return;
+      var host = el.closest('.ov');
+      if (host && host.hidden) return;
+      if (!el.offsetParent && !el.getClientRects().length) return;
+      var r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      out.push({ x: r.left - mapRect.left, y: r.top - mapRect.top, w: r.width, h: r.height });
+    });
+    return out;
+  }
+
   function overlapArea(a, b) {
     var dx = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
     var dy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
@@ -268,9 +319,12 @@
 
     var size = MV.map.getSize();
     var pinS = MV.uiScale * (s.pinScale || 100) / 100;
-    var gap = 10 * MV.uiScale;
+    /* Clear the pin's own footprint, or every slot to the right of a pin pays
+       the same overlap penalty and the cost comparison is biased leftward. */
+    var gap = Math.max(10 * MV.uiScale, 16 * pinS);
 
     var pinBoxes = [];
+    var furniture = furnitureBoxes();
     var items = [];
 
     Store.located().forEach(function (p) {
@@ -312,6 +366,7 @@
         var cost = i * 40;                       // mild preference for earlier slots
         placed.forEach(function (q) { cost += overlapArea(box, q) * 3; });
         pinBoxes.forEach(function (q) { cost += overlapArea(box, q) * 6; });
+        furniture.forEach(function (q) { cost += overlapArea(box, q) * 5; });
 
         // Keep it inside the frame, with an inset so a label never sits flush
         // against the edge of a printed exhibit.
@@ -578,11 +633,13 @@
 
     drawRings();
     drawConnectors();
+    /* Legend and title first: label placement measures them as obstacles, so
+       they have to be at their final size before the labels are positioned. */
+    MV.renderLegend();
+    MV.renderTitle();
     MV.autoPlaceLabels();
     MV.updateLeaders();
     MV.maybeAutoFit();
-    MV.renderLegend();
-    MV.renderTitle();
   };
 
   function removeEntry(entry) {
@@ -993,6 +1050,13 @@
 
   MV.suspendAutoFit = false;
 
+  /* Room left around the content, in screen pixels: enough for a label stack
+     above and below the outermost pins. Split for fitBounds, summed for
+     getBoundsZoom, so the fit and the check always agree. */
+  var FIT_PAD_TL = [100, 130];
+  var FIT_PAD_BR = [100, 150];
+  var LONE_PIN_ZOOM = 17;
+
   /** Bounds covering every located pin and any parcel drawn. */
   MV.contentBounds = function () {
     var pts = Store.located().map(function (p) { return [p.lat, p.lng]; });
@@ -1012,15 +1076,33 @@
     return MV.map.getBounds().pad(-0.10).contains(content);
   };
 
+  /** The zoom a fit would settle on right now. */
+  MV.fitZoom = function () {
+    var content = MV.contentBounds();
+    if (!content) return null;
+    if (Store.located().length < 2) return LONE_PIN_ZOOM;
+    var pad = L.point(FIT_PAD_TL[0] + FIT_PAD_BR[0], FIT_PAD_TL[1] + FIT_PAD_BR[1]);
+    return MV.map.getBoundsZoom(content, false, pad);
+  };
+
   MV.autoFitEnabled = function () {
     return Store.state.style.autoFit !== false;
   };
 
-  /** Refit if enabled and something has drifted off. */
+  /**
+   * Refit when the framing no longer shows the relationship well. Two ways it
+   * can go wrong, and both matter: something has drifted off the edge, or the
+   * view is far looser than a fit would be — pins clustered in the middle of an
+   * empty frame is just as useless as pins off the side.
+   */
   MV.maybeAutoFit = function () {
     if (MV.suspendAutoFit || !MV.autoFitEnabled()) return false;
     if (!Store.located().length) return false;
-    if (MV.allInView()) return false;
+
+    var want = MV.fitZoom();
+    var loose = want != null && Math.abs(want - MV.map.getZoom()) > 0.35;
+    if (MV.allInView() && !loose) return false;
+
     MV.fitAll();
     return true;
   };
@@ -1046,13 +1128,13 @@
     });
     if (!pts.length) return false;
     if (pts.length === 1) {
-      MV.map.setView(pts[0], 17, { animate: false });
+      MV.map.setView(pts[0], LONE_PIN_ZOOM, { animate: false });
       return true;
     }
     // Extra top/left room so labels, title and legend are not clipped.
     MV.map.fitBounds(L.latLngBounds(pts), {
-      paddingTopLeft: [100, 130],
-      paddingBottomRight: [100, 150],
+      paddingTopLeft: FIT_PAD_TL,
+      paddingBottomRight: FIT_PAD_BR,
       animate: false
     });
     return true;
