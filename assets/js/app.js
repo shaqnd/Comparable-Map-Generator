@@ -116,6 +116,7 @@
 
     CMG.ui.refreshParcelPresets();
     CMG.ui.renderThemePanel();
+    UI.resetStage();     // a different project may be back at a blank first screen
     UI.applyFrameSize();
     $sync();
   }

@@ -163,10 +163,15 @@
       if (MV.scaleControl._update) MV.scaleControl._update();
     }
 
+    // Title, north arrow and legend are exhibit furniture. On a map with
+    // nothing on it they are three cards floating over an empty rectangle,
+    // so they arrive with the first pin.
+    var started = Store.located().length > 0;
+
     frame.classList.toggle('hide-labels', !s.showLabels);
-    frame.classList.toggle('hide-scale', !s.showScale);
-    document.getElementById('ovTitle').hidden = !s.showTitle;
-    document.getElementById('ovNorth').hidden = !s.showNorth;
+    frame.classList.toggle('hide-scale', !s.showScale || !started);
+    document.getElementById('ovTitle').hidden = !s.showTitle || !started;
+    document.getElementById('ovNorth').hidden = !s.showNorth || !started;
     document.getElementById('ovLegend').hidden = !s.showLegend;
     document.getElementById('ovLegend').setAttribute('data-pos', s.legendPos || 'bottom-right');
   };
@@ -836,12 +841,12 @@
     });
 
     tbody.innerHTML = rows.join('');
-    document.querySelector('#ovLegend .legend-title').textContent =
-      Store.state.comps.length ? 'Legend' : 'Subject';
+    document.querySelector('#ovLegend .legend-title').textContent = 'Legend';
 
-    // An empty legend is just a floating box with a heading — hide it until it
-    // has something to say, or a blank map exports with furniture on it.
-    document.getElementById('ovLegend').hidden = !s.showLegend || !rows.length;
+    // A legend keys one symbol to another. With only the subject on the map
+    // there is nothing to key, and it is just a floating box with a heading —
+    // so it earns its place at the first comparable.
+    document.getElementById('ovLegend').hidden = !s.showLegend || rows.length < 2;
   };
 
   /* ------------------------------------------------------------ interaction */

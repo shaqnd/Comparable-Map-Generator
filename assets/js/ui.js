@@ -55,6 +55,9 @@
   }
 
   function locationBadge(p) {
+    // An empty card has nothing to report — "Not located" on a blank field is
+    // noise on the opening screen.
+    if (!(p.address || '').trim() && p.lat == null && !UI.busy[p.id]) return '';
     if (UI.busy[p.id]) {
       return '<span class="loc loc-busy"><span class="mini-spin"></span>Locating…</span>';
     }
@@ -119,8 +122,11 @@
                'value="' + U.escapeHtml(p.address) + '" ' +
                'autocomplete="off" spellcheck="false">' +
         '<button class="icon-btn" data-act="geocode" title="Find this address">Find</button>' +
-        '<button class="icon-btn" data-act="toggle" title="More" aria-expanded="' + open + '">' +
-          (open ? '▴' : '▾') + '</button>' +
+        // Sale price, date and size describe a property — pointless until the
+        // card names one.
+        ((p.address || '').trim() ?
+          '<button class="icon-btn" data-act="toggle" title="More" aria-expanded="' + open + '">' +
+            (open ? '▴' : '▾') + '</button>' : '') +
       '</div>' +
       '<div class="prop-meta">' + locationBadge(p) + distanceNote(p) + '</div>' +
       (open ? detailHtml(p, f, isComp) : '') +
@@ -210,6 +216,7 @@
     rebuilding = true;
     try {
       UI.updateFirstRun();
+      UI.updateStage();
       $('#subjectCard').innerHTML = cardHtml(Store.state.subject);
       $('#compList').innerHTML = Store.state.comps.map(cardHtml).join('') ||
         '<p class="empty">No comparables yet. Add one below, or paste a list of addresses.</p>';
@@ -1367,16 +1374,51 @@
     host.hidden = dismissed || !empty;
   };
 
+  /* --------------------------------------------------- progressive disclosure
+
+     The tab bar, the map tools and the project panel all customise a map, and
+     there is nothing to customise until an address lands on one. They stay
+     hidden until the first pin appears, which leaves the opening screen as an
+     address field and little else.
+
+     The reveal is one-way within a project: controls that come and go while
+     you work are worse than controls that were never there. Opening a file or
+     starting a new map recomputes it from scratch. */
+
+  UI.revealed = false;
+
+  UI.updateStage = function () {
+    if (Store.located().length) UI.revealed = true;
+    document.body.classList.toggle('has-located', UI.revealed);
+
+    var waiting = [Store.state.subject].concat(Store.state.comps).some(function (p) {
+      return (p.address || '').trim() && p.lat == null;
+    });
+    document.body.classList.toggle('nothing-to-locate', !waiting);
+  };
+
+  /** Recompute from state — for opening a file or starting a new map. */
+  UI.resetStage = function () {
+    UI.revealed = Store.located().length > 0;
+    if (!UI.revealed) UI.activateTab('properties');
+    UI.updateStage();
+  };
+
   /* ------------------------------------------------------------------ tabs */
+
+  UI.activateTab = function (name) {
+    $$('.tab').forEach(function (b) {
+      b.classList.toggle('is-active', b.getAttribute('data-tab') === name);
+    });
+    $$('.tabpanel').forEach(function (p) {
+      p.classList.toggle('is-active', p.getAttribute('data-panel') === name);
+    });
+  };
 
   UI.wireTabs = function () {
     $$('.tab').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var name = btn.getAttribute('data-tab');
-        $$('.tab').forEach(function (b) { b.classList.toggle('is-active', b === btn); });
-        $$('.tabpanel').forEach(function (p) {
-          p.classList.toggle('is-active', p.getAttribute('data-panel') === name);
-        });
+        UI.activateTab(btn.getAttribute('data-tab'));
       });
     });
   };
@@ -1446,6 +1488,9 @@
         if (ev.key === 'Enter') { ev.preventDefault(); CMG.mapview.finishDraw(); return; }
         if (ev.key === 'Backspace') { ev.preventDefault(); CMG.mapview.undoDrawPoint(); return; }
       }
+      // The mode shortcuts match toolbar buttons that are not on screen yet.
+      if (!UI.revealed) return;
+
       var map = { v: 'pan', p: 'parcel', m: 'place' };
       var k = ev.key.toLowerCase();
       if (k === 'd') { CMG.mapview.startDraw(CMG.mapview.targetProperty().id); return; }
