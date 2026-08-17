@@ -1,4 +1,4 @@
-/* Comparable Sales Map Generator — small helpers.
+/* AssessMapper — small helpers.
    Loaded first; everything else hangs off the CMG namespace. */
 window.CMG = window.CMG || {};
 

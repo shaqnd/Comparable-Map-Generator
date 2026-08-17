@@ -1,9 +1,9 @@
-# Comparable Sales Map Generator
+# AssessMapper
 
 A single-page tool for building comparable sales exhibits for appraisal reports.
-Enter the subject and the comparables, confirm each location on aerial imagery,
-pull in parcel boundaries, adjust the labels, and export a print-resolution image
-sized for your report.
+Enter the subject — or a whole portfolio of them — and the comparables, confirm
+each location on aerial imagery, pull in parcel boundaries, adjust the labels,
+and export a print-resolution image sized for your report.
 
 No install, no account, no API keys. Everything runs in the browser and nothing
 leaves the machine except the address lookups.

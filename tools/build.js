@@ -377,9 +377,9 @@ if (args.project) {
 }
 
 const title = args.title ||
-  (MODE === 'demo' ? 'Comparable Sales Map Generator — demo'
-                   : (project && project.title ? project.title + ' — Comparable Sales Map'
-                                               : 'Comparable Sales Map Generator'));
+  (MODE === 'demo' ? 'AssessMapper — demo'
+                   : (project && project.title ? project.title + ' — AssessMapper'
+                                               : 'AssessMapper'));
 
 const parts = [];
 parts.push('<title>' + title + '</title>');

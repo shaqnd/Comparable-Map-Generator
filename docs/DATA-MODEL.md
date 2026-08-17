@@ -14,7 +14,7 @@ Every saved job carries two version markers, and they are not the same thing:
 
 | Field | Meaning |
 | --- | --- |
-| `schema` | The shape of the record — `mapcomps.project/1`. Anything that later reads these files (a comp repository, a sync service, an importer) keys off this. |
+| `schema` | The shape of the record — `assessmapper.project/1`. Anything that later reads these files (a comp repository, a sync service, an importer) keys off this. |
 | `version` | The build of the map tool that wrote the file. Bumped when the tool's own migration logic changes. |
 
 Separating them means the map tool can change freely without invalidating a
@@ -24,7 +24,7 @@ stored corpus, and the record shape can be versioned on its own schedule.
 
 ```jsonc
 {
-  "schema": "mapcomps.project/1",
+  "schema": "assessmapper.project/1",
   "version": 2,
   "id": "map_…",            // stable across saves; the map counter dedupes on it
   "title": "…",

@@ -371,6 +371,9 @@
   CMG.FIRSTRUN_KEY = 'cmg.seenIntro.v1';
   CMG.COUNTER_ENDPOINT = '';
 
+  /* These keys are deliberately not renamed with the product. They address
+     work already sitting in someone's browser, and changing them would orphan
+     an appraiser's autosaved map and their saved county presets. */
   CMG.STORAGE_KEY = 'cmg.project.v1';
   CMG.PRESET_KEY = 'cmg.parcelPresets.v1';
   CMG.PROJECT_VERSION = 2;      // 2 = many subjects; 1 files still open
@@ -379,6 +382,6 @@
      it. Anything that later reads these files — a comp repository, a sync
      service — keys off this, not off the version number of the map tool.
      See docs/DATA-MODEL.md. */
-  CMG.SCHEMA_ID = 'mapcomps.project/1';
+  CMG.SCHEMA_ID = 'assessmapper.project/1';
 
 })(window.CMG);
