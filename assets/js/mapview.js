@@ -192,7 +192,7 @@
      it. Both are built from the same theme tokens. */
   function pinIcon(p) {
     var color = colorFor(p);
-    var text = p.role === 'subject' ? 'S' : String(p.number || '');
+    var text = Store.keyFor(p);
     var selected = MV.selectedId === p.id ? ' is-selected' : '';
     var ring = U.escapeHtml(token('pinStroke'));
     var core = token('pinDisc');
@@ -730,12 +730,21 @@
 
   function drawRings() {
     clearLayerList(MV._rings);
-    var subject = Store.state.subject;
-    if (subject.lat == null) return;
-
     var raw = String(Store.state.style.radiusRings || '').trim();
     if (!raw) return;
+    // On a portfolio map every subject gets its own rings — the distance that
+    // matters is to the nearest holding, not to whichever one was entered first.
+    var first = true;
+    Store.state.subjects.forEach(function (subject) {
+      if (subject.lat == null) return;
+      // Every subject gets rings, but only one set is labelled — the radius is
+      // the same for all of them, and three stacks of "0.5 mi" is noise.
+      ringsAround(subject, raw, first);
+      first = false;
+    });
+  }
 
+  function ringsAround(subject, raw, withTags) {
     raw.split(',').forEach(function (part) {
       var mi = parseFloat(part);
       if (!isFinite(mi) || mi <= 0) return;
@@ -751,6 +760,8 @@
         interactive: false
       }).addTo(MV.map);
       MV._rings.push(circle);
+
+      if (!withTags) return;
 
       var edge = L.latLng(subject.lat, subject.lng);
       var north = MV.map.latLngToContainerPoint(edge);
@@ -777,11 +788,14 @@
   function drawConnectors() {
     clearLayerList(MV._connectors);
     if (!Store.state.style.showConnectors) return;
-    var subject = Store.state.subject;
-    if (subject.lat == null) return;
 
     Store.state.comps.forEach(function (c) {
       if (c.lat == null) return;
+      // Drawn to the nearest subject, which is the relationship the reader is
+      // being shown. Lines to every subject would be a cat's cradle.
+      var near = Store.nearestSubject(c);
+      if (!near) return;
+      var subject = near.subject;
       var line = L.polyline([[subject.lat, subject.lng], [c.lat, c.lng]], {
         color: token('connector'),
         weight: 1.4 * MV.uiScale,
@@ -808,15 +822,18 @@
   MV.renderLegend = function () {
     var s = Store.state.style;
     var tbody = document.getElementById('legendRows');
-    var subject = Store.state.subject;
+    var many = Store.state.subjects.length > 1;
     var rows = [];
 
     function cell(p, distance) {
       var swatch = '<td class="lg-key"><span class="lg-dot" style="background:' +
                    U.escapeHtml(colorFor(p)) + '">' +
-                   U.escapeHtml(p.role === 'subject' ? 'S' : String(p.number)) +
+                   U.escapeHtml(Store.keyFor(p)) +
                    '</span></td>';
-      var main = (p.address || '').split(',')[0] || (p.role === 'subject' ? 'Subject' : 'Comparable ' + p.number);
+      var fallback = p.role === 'subject'
+        ? (many ? 'Subject ' + p.number : 'Subject')
+        : 'Comparable ' + p.number;
+      var main = (p.address || '').split(',')[0] || fallback;
       var extras = [];
       if (p.role === 'comp') {
         var money = U.formatMoney(p.fields.salePrice);
@@ -831,11 +848,16 @@
              U.escapeHtml(main) + detail + '</td>' + dist + '</tr>';
     }
 
-    if (subject.lat != null || subject.address) rows.push(cell(subject, null));
+    Store.state.subjects.forEach(function (sub) {
+      if (sub.lat != null || sub.address) rows.push(cell(sub, null));
+    });
     Store.state.comps.forEach(function (c) {
       var d = null;
-      if (s.legendDistance && subject.lat != null && c.lat != null) {
-        d = U.formatDistance(U.distanceMiles(subject, c)) + ' ' + U.bearingLabel(subject, c);
+      var near = s.legendDistance ? Store.nearestSubject(c) : null;
+      if (near) {
+        d = U.formatDistance(near.miles) + ' ' + U.bearingLabel(near.subject, c) +
+            // With one subject the reference is obvious; with several it is not.
+            (many ? ' of ' + Store.keyFor(near.subject) : '');
       }
       rows.push(cell(c, d));
     });
@@ -883,7 +905,7 @@
   };
 
   MV.targetProperty = function () {
-    return Store.find(MV.selectedId) || Store.state.subject;
+    return Store.find(MV.selectedId) || Store.primarySubject();
   };
 
   MV.onMapClick = function (e) {
@@ -973,7 +995,7 @@
       targetId: targetId || MV.targetProperty().id,
       points: [],
       line: L.polyline([], {
-        color: colorFor(Store.find(targetId || MV.targetProperty().id) || Store.state.subject),
+        color: colorFor(Store.find(targetId || MV.targetProperty().id) || Store.primarySubject()),
         weight: 3, dashArray: '6,5',
         renderer: MV._renderer, pane: 'parcelPane', interactive: false
       }).addTo(MV.map),
@@ -989,7 +1011,7 @@
       MV._draw.points.length > 2 ? [MV._draw.points[0]] : []));
     L.circleMarker(latlng, {
       radius: 4, color: token('pinStroke'), weight: 2,
-      fillColor: colorFor(Store.find(MV._draw.targetId) || Store.state.subject),
+      fillColor: colorFor(Store.find(MV._draw.targetId) || Store.primarySubject()),
       fillOpacity: 1, renderer: MV._renderer, pane: 'parcelPane', interactive: false
     }).addTo(MV._draw.vertices);
   };
@@ -1001,7 +1023,7 @@
     MV._draw.points.forEach(function (ll) {
       L.circleMarker(ll, {
         radius: 4, color: token('pinStroke'), weight: 2,
-        fillColor: colorFor(Store.find(MV._draw.targetId) || Store.state.subject),
+        fillColor: colorFor(Store.find(MV._draw.targetId) || Store.primarySubject()),
         fillOpacity: 1, renderer: MV._renderer, pane: 'parcelPane', interactive: false
       }).addTo(MV._draw.vertices);
     });
@@ -1021,7 +1043,7 @@
       return;
     }
     var parcel = CMG.parcels.fromDrawnPoints(pts);
-    var target = Store.find(targetId) || Store.state.subject;
+    var target = Store.find(targetId) || Store.primarySubject();
     Store.pushUndo();
     target.parcel = parcel;
     if (target.lat == null && parcel.centroid) {
@@ -1145,11 +1167,21 @@
     return true;
   };
 
+  /** Frame the subject — or, on a portfolio map, all of them together. */
   MV.fitSubject = function () {
-    var s = Store.state.subject;
-    if (s.lat == null) return false;
-    MV.releaseAutoFit('Centred on the subject');
-    MV.map.setView([s.lat, s.lng], Math.max(MV.map.getZoom(), 17), { animate: false });
+    var pts = Store.state.subjects
+      .filter(function (s) { return s.lat != null; })
+      .map(function (s) { return [s.lat, s.lng]; });
+    if (!pts.length) return false;
+
+    MV.releaseAutoFit(pts.length > 1 ? 'Centred on the subjects' : 'Centred on the subject');
+    if (pts.length === 1) {
+      MV.map.setView(pts[0], Math.max(MV.map.getZoom(), 17), { animate: false });
+    } else {
+      MV.map.fitBounds(L.latLngBounds(pts), {
+        paddingTopLeft: FIT_PAD_TL, paddingBottomRight: FIT_PAD_BR, animate: false
+      });
+    }
     return true;
   };
 

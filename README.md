@@ -38,6 +38,23 @@ line becomes a numbered comparable and is geocoded automatically. **Locate every
 address** looks up anything still missing a pin, which is the one click needed after
 opening a project that carries addresses but no coordinates.
 
+Both lists are unbounded — as many subjects and as many comparables as the job
+needs. Numbering, colours and label headings all follow position, so nothing has
+a ceiling.
+
+**Valuing a portfolio?** Click **+ Add another subject**. The panel becomes
+*Subject Properties*, the pins key as `S1`, `S2`, `S3` in the subject colour, and
+the labels head *SUBJECT 1*, *SUBJECT 2*. With one subject nothing changes — it
+stays a plain `S` and *SUBJECT*.
+
+The comparables are shared across every subject on the map, which is the usual
+portfolio case: several holdings in one submarket valued off one set of sales.
+Every distance is then measured to the **nearest** subject and names it —
+`0.52 mi NW of S2` — in the sidebar and in the legend, because "of subject" means
+nothing when there are three. Radius rings are drawn around each subject and
+labelled once; connector lines run from each comparable to the subject nearest
+it.
+
 Every address is looked up against **three independent geocoders**:
 
 | Provider | Strength |
@@ -59,8 +76,9 @@ You can always override:
 - **Coordinates** — paste `39.739200, -104.990300` directly. You can also type
   coordinates into the address box.
 
-Distance and bearing from the subject are computed for every comparable
-(great-circle, in statute miles) and shown in both the sidebar and the legend.
+Distance and bearing are computed for every comparable (great-circle, in statute
+miles) and shown in both the sidebar and the legend — measured to the nearest
+subject, and naming it when the map carries more than one.
 
 ### 2. Choose the view
 
@@ -133,7 +151,7 @@ Drag any label to reposition it; a leader line follows it back to the pin. Label
 offsets are stored in the project, so they survive zooming, saving and reloading.
 
 Also under **Map**: label text size, pin size, leader lines, subject-to-comparable
-connector lines, and radius rings around the subject (enter `0.5, 1, 2` for half-,
+connector lines, and radius rings around each subject (enter `0.5, 1, 2` for half-,
 one- and two-mile rings). Colours live on their own tab.
 
 ### 4b. Themes — making the map yours
@@ -320,11 +338,18 @@ assets/js/app.js               bootstrap
 assets/vendor/                 Leaflet 1.9.4 and html2canvas 1.4.1
 demo/demo-mode.js              offline stand-ins for tiles, geocoding, parcels
 tools/build.js                 single-file build (live or demo)
+docs/DATA-MODEL.md             the saved-job record shape, and why it looks like that
 ```
 
 Leaflet and html2canvas are bundled locally on purpose — a CDN is one more thing an
 office firewall can block, and this way the tool keeps working offline apart from the
 map tiles themselves.
+
+A saved `.cmap.json` is a structured record, not a screenshot with coordinates
+attached: it names its own schema, carries canonical ids, and reserves the fields
+a comp repository will need later. [docs/DATA-MODEL.md](docs/DATA-MODEL.md) sets
+out the shape, how it lines up with the product strategy, and what is
+deliberately absent for now.
 
 ---
 

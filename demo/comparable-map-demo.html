@@ -893,6 +893,20 @@ textarea { resize: vertical; font-family: inherit; }
 .btn-row.wrap { flex-wrap: wrap; align-items: center; }
 .btn-row .btn { flex: 1 1 auto; }
 
+/* A quiet action that should read like the "paste a list" affordance, not
+   compete with the primary button next to it. */
+.link-btn {
+  display: block;
+  margin-top: 10px;
+  border: 0; background: none; padding: 0;
+  font-size: 12.5px; font-weight: 600; color: var(--accent);
+  cursor: pointer;
+}
+.link-btn:hover { color: var(--accent-dark); text-decoration: underline; }
+
+/* One subject is the ordinary case, and a pill reading "1" is just noise. */
+#subjectPanel:not(.is-portfolio) #subjectCount { display: none; }
+
 details.sub { margin-top: 10px; border-top: 1px solid var(--line-soft); padding-top: 8px; }
 details.sub > summary {
   cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--accent);
@@ -1863,11 +1877,13 @@ html, body {
       <!-- ========== PROPERTIES ========== -->
       <section class="tabpanel is-active" data-panel="properties">
 
-        <div class="panel">
+        <div class="panel" id="subjectPanel">
           <div class="panel-head">
-            <h3>Subject Property</h3>
+            <h3 id="subjectHeading">Subject Property</h3>
+            <span class="pill" id="subjectCount">1</span>
           </div>
           <div id="subjectCard" class="card-host"></div>
+          <button id="addSubject" class="link-btn">+ Add another subject</button>
         </div>
 
         <div class="panel">
@@ -2871,7 +2887,13 @@ window.CMG = window.CMG || {};
 
   CMG.STORAGE_KEY = 'cmg.project.v1';
   CMG.PRESET_KEY = 'cmg.parcelPresets.v1';
-  CMG.PROJECT_VERSION = 1;
+  CMG.PROJECT_VERSION = 2;      // 2 = many subjects; 1 files still open
+
+  /* Names the shape of a saved job, separately from the app build that wrote
+     it. Anything that later reads these files — a comp repository, a sync
+     service — keys off this, not off the version number of the map tool.
+     See docs/DATA-MODEL.md. */
+  CMG.SCHEMA_ID = 'mapcomps.project/1';
 
 })(window.CMG);
 
@@ -3186,11 +3208,19 @@ window.CMG = window.CMG || {};
 
   var U = CMG.util;
 
+  /* The property record.
+
+     Beyond what the map draws, each record carries the fields the product
+     strategy calls for in Phase 0 — a canonical id, a subject profile that can
+     describe a property without naming it, and verification as an append-only
+     list of observations rather than a boolean. Nothing in the map UI writes
+     the latter two yet; they exist so that a saved job is a structured record
+     from the first release instead of a screenshot with coordinates. */
   function blankProperty(role, number) {
     return {
       id: U.uid(role),
       role: role,                 // 'subject' | 'comp'
-      number: number || null,     // comps are numbered 1..n
+      number: number || null,     // numbered 1..n within its own role
       address: '',
       lat: null,
       lng: null,
@@ -3208,8 +3238,45 @@ window.CMG = window.CMG || {};
       color: null,                // overrides the theme palette for this one property
       labelOffset: null,          // {x,y} in pixels from the pin, at zoom-independent scale
       showLabel: true,
-      parcel: null                // { geometry, attributes, source }
+      parcel: null,               // { geometry, attributes, source }
+
+      /* Phase-0 structure, not yet surfaced in the UI. */
+      profile: {},                // subjects: type, age, size, class, submarket…
+      verifications: [],          // comps: one record per observation, never overwritten
+      source: null                // where the sale data came from
     };
+  }
+
+  /* The two lists behave identically; only the record's role differs. */
+  function addTo(listKey, role, address, batched) {
+    if (!batched) Store.pushUndo();
+    var heads = Store.headings();
+    var p = blankProperty(role, Store.state[listKey].length + 1);
+    p.address = address || '';
+    Store.state[listKey].push(p);
+    Store.renumber(heads);
+    Store.emit('properties');
+    return p;
+  }
+
+  function removeFrom(listKey, id) {
+    Store.pushUndo();
+    var heads = Store.headings();
+    Store.state[listKey] = Store.state[listKey].filter(function (p) { return p.id !== id; });
+    Store.renumber(heads);
+    Store.emit('properties');
+  }
+
+  function moveWithin(listKey, id, delta) {
+    var arr = Store.state[listKey];
+    var i = arr.findIndex(function (p) { return p.id === id; });
+    var j = i + delta;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    Store.pushUndo();
+    var heads = Store.headings();
+    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    Store.renumber(heads);
+    Store.emit('properties');
   }
 
   var Store = {
@@ -3231,11 +3298,12 @@ window.CMG = window.CMG || {};
     blankProject: function () {
       return {
         version: CMG.PROJECT_VERSION,
+        schema: CMG.SCHEMA_ID,      // names the record shape, not the app build
         id: U.uid('map'),           // stable across saves; the counter dedupes on it
         title: 'Comparable Sales Map',
         subtitle: '',
         exportName: '',
-        subject: blankProperty('subject'),
+        subjects: [blankProperty('subject', 1)],
         comps: [],
         view: JSON.parse(JSON.stringify(CMG.DEFAULT_VIEW)),
         style: JSON.parse(JSON.stringify(CMG.DEFAULT_STYLE)),
@@ -3265,15 +3333,26 @@ window.CMG = window.CMG || {};
       out.view = Object.assign({}, base.view, p.view || {});
       out.exportCfg = Object.assign({}, base.exportCfg, p.exportCfg || {});
       out.parcelService = Object.assign({}, base.parcelService, p.parcelService || {});
-      out.subject = Object.assign(blankProperty('subject'), p.subject || {});
-      out.subject.fields = Object.assign(blankProperty('subject').fields, (p.subject || {}).fields || {});
-      out.comps = (p.comps || []).map(function (c, i) {
-        var merged = Object.assign(blankProperty('comp', i + 1), c);
-        merged.fields = Object.assign(blankProperty('comp').fields, c.fields || {});
+      function restore(role, raw, i) {
+        var blank = blankProperty(role, i + 1);
+        var merged = Object.assign(blank, raw || {});
+        merged.fields = Object.assign(blankProperty(role).fields, (raw || {}).fields || {});
+        merged.profile = Object.assign({}, (raw || {}).profile || {});
+        merged.verifications = ((raw || {}).verifications || []).slice();
+        merged.role = role;
         merged.number = i + 1;
         return merged;
-      });
+      }
+
+      // Files written before portfolios carried a single `subject`.
+      var rawSubjects = p.subjects || (p.subject ? [p.subject] : []);
+      out.subjects = rawSubjects.map(function (s, i) { return restore('subject', s, i); });
+      if (!out.subjects.length) out.subjects = [blankProperty('subject', 1)];
+      delete out.subject;
+
+      out.comps = (p.comps || []).map(function (c, i) { return restore('comp', c, i); });
       out.version = CMG.PROJECT_VERSION;
+      out.schema = CMG.SCHEMA_ID;
       return out;
     },
 
@@ -3312,7 +3391,50 @@ window.CMG = window.CMG || {};
     /* ------------------------------------------------------------- accessors */
 
     all: function () {
-      return [Store.state.subject].concat(Store.state.comps);
+      return Store.state.subjects.concat(Store.state.comps);
+    },
+
+    subjects: function () { return Store.state.subjects; },
+
+    /** The first subject — what a single-subject operation should act on. */
+    primarySubject: function () {
+      var located = Store.state.subjects.filter(function (s) { return s.lat != null; });
+      return located[0] || Store.state.subjects[0];
+    },
+
+    /**
+     * The subject a comparable sits closest to. On a portfolio map "3.4 mi SW
+     * of subject" is meaningless — the reader needs to know which one.
+     * @returns {{subject: object, miles: number}|null}
+     */
+    nearestSubject: function (p) {
+      if (!p || p.lat == null) return null;
+      var best = null;
+      Store.state.subjects.forEach(function (s) {
+        if (s.lat == null || s.id === p.id) return;
+        var d = U.distanceMiles(s, p);
+        if (!best || d < best.miles) best = { subject: s, miles: d };
+      });
+      return best;
+    },
+
+    /** The short key drawn on the pin, the card badge and the legend swatch. */
+    keyFor: function (p) {
+      if (p.role !== 'subject') return String(p.number || '');
+      return Store.state.subjects.length > 1 ? 'S' + (p.number || 1) : 'S';
+    },
+
+    /** The auto-generated first line of a map label. */
+    headingFor: function (p) {
+      if (p.role !== 'subject') return 'COMPARABLE ' + (p.number || '');
+      return Store.state.subjects.length > 1 ? 'SUBJECT ' + (p.number || 1) : 'SUBJECT';
+    },
+
+    /** Every current heading, keyed by id — snapshot this before renumbering. */
+    headings: function () {
+      var m = {};
+      Store.all().forEach(function (p) { m[p.id] = Store.headingFor(p); });
+      return m;
     },
 
     located: function () {
@@ -3325,56 +3447,67 @@ window.CMG = window.CMG || {};
 
     /* ------------------------------------------------------------- mutations */
 
+    /* Both lists are unbounded: a portfolio can carry as many subjects as it
+       owns, and a valuation as many comparables as it cites. Numbering,
+       colours and label headings all derive from position, so nothing here
+       has a ceiling. */
+
     /** @param {boolean} [batched] caller owns the undo snapshot for the batch */
     addComp: function (address, batched) {
-      if (!batched) Store.pushUndo();
-      var c = blankProperty('comp', Store.state.comps.length + 1);
-      c.address = address || '';
-      Store.state.comps.push(c);
-      Store.renumber();
-      Store.emit('properties');
-      return c;
+      return addTo('comps', 'comp', address, batched);
     },
 
-    removeComp: function (id) {
-      Store.pushUndo();
-      Store.state.comps = Store.state.comps.filter(function (c) { return c.id !== id; });
-      Store.renumber();
-      Store.emit('properties');
+    addSubject: function (address, batched) {
+      return addTo('subjects', 'subject', address, batched);
     },
 
-    moveComp: function (id, delta) {
-      var i = Store.state.comps.findIndex(function (c) { return c.id === id; });
-      var j = i + delta;
-      if (i < 0 || j < 0 || j >= Store.state.comps.length) return;
-      Store.pushUndo();
-      var arr = Store.state.comps;
-      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-      Store.renumber();
-      Store.emit('properties');
+    removeComp: function (id) { removeFrom('comps', id); },
+
+    /** A map always has at least one subject; removing the last one blanks it. */
+    removeSubject: function (id) {
+      if (Store.state.subjects.length <= 1) {
+        var only = Store.state.subjects[0];
+        if (!only || only.id !== id) return false;
+        Store.pushUndo();
+        Store.state.subjects = [blankProperty('subject', 1)];
+        Store.renumber();
+        Store.emit('properties');
+        return true;
+      }
+      removeFrom('subjects', id);
+      return true;
     },
 
-    renumber: function () {
-      Store.state.comps.forEach(function (c, i) {
-        var was = c.number;
-        c.number = i + 1;
-        if (!c.labelCustom) { Store.refreshLabel(c); return; }
-        // A hand-written label is the appraiser's text and stays theirs, but a
-        // heading that names the old number would now contradict the pin.
-        if (was !== c.number) Store.renumberLabel(c, was);
+    moveComp: function (id, delta) { moveWithin('comps', id, delta); },
+    moveSubject: function (id, delta) { moveWithin('subjects', id, delta); },
+
+    /**
+     * Renumber both lists and bring auto-generated headings back in line.
+     * @param {Object.<string,string>} [oldHeads] headings captured before the
+     *        change, so a hand-written label whose first line is still the old
+     *        auto heading can be retitled rather than left contradicting the pin.
+     */
+    renumber: function (oldHeads) {
+      Store.state.subjects.forEach(function (p, i) { p.number = i + 1; });
+      Store.state.comps.forEach(function (c, i) { c.number = i + 1; });
+
+      Store.all().forEach(function (p) {
+        if (!p.labelCustom) { Store.refreshLabel(p); return; }
+        // A hand-written label is the appraiser's text and stays theirs — all
+        // that is corrected is a heading that now names the wrong pin.
+        if (oldHeads && oldHeads[p.id]) Store.retitleLabel(p, oldHeads[p.id]);
       });
-      if (!Store.state.subject.labelCustom) Store.refreshLabel(Store.state.subject);
     },
 
-    /** Rewrite only a leading "COMPARABLE <n>" heading, leaving the rest alone. */
-    renumberLabel: function (p, oldNumber) {
+    /** Replace a leading auto heading, leaving every other line alone. */
+    retitleLabel: function (p, oldHeading) {
       var lines = String(p.labelText || '').split('\n');
       if (!lines.length) return;
-      var head = new RegExp('^(\\s*COMPARABLE\\s+)' + oldNumber + '(\\s*)$', 'i');
-      if (head.test(lines[0])) {
-        lines[0] = lines[0].replace(head, '$1' + p.number + '$2');
-        p.labelText = lines.join('\n');
-      }
+      var now = Store.headingFor(p);
+      if (lines[0].trim().toUpperCase() !== String(oldHeading).toUpperCase()) return;
+      if (lines[0].trim() === now) return;
+      lines[0] = lines[0].replace(/\S.*\S|\S/, now);
+      p.labelText = lines.join('\n');
     },
 
     setLocation: function (id, lat, lng, geocode, pinned) {
@@ -3405,7 +3538,7 @@ window.CMG = window.CMG || {};
      */
     refreshLabel: function (p) {
       var lines = [];
-      lines.push(p.role === 'subject' ? 'SUBJECT' : ('COMPARABLE ' + (p.number || '')));
+      lines.push(Store.headingFor(p));
 
       var addr = (p.address || '').trim();
       if (addr) {
@@ -4401,7 +4534,7 @@ window.CMG = window.CMG || {};
      it. Both are built from the same theme tokens. */
   function pinIcon(p) {
     var color = colorFor(p);
-    var text = p.role === 'subject' ? 'S' : String(p.number || '');
+    var text = Store.keyFor(p);
     var selected = MV.selectedId === p.id ? ' is-selected' : '';
     var ring = U.escapeHtml(token('pinStroke'));
     var core = token('pinDisc');
@@ -4939,12 +5072,21 @@ window.CMG = window.CMG || {};
 
   function drawRings() {
     clearLayerList(MV._rings);
-    var subject = Store.state.subject;
-    if (subject.lat == null) return;
-
     var raw = String(Store.state.style.radiusRings || '').trim();
     if (!raw) return;
+    // On a portfolio map every subject gets its own rings — the distance that
+    // matters is to the nearest holding, not to whichever one was entered first.
+    var first = true;
+    Store.state.subjects.forEach(function (subject) {
+      if (subject.lat == null) return;
+      // Every subject gets rings, but only one set is labelled — the radius is
+      // the same for all of them, and three stacks of "0.5 mi" is noise.
+      ringsAround(subject, raw, first);
+      first = false;
+    });
+  }
 
+  function ringsAround(subject, raw, withTags) {
     raw.split(',').forEach(function (part) {
       var mi = parseFloat(part);
       if (!isFinite(mi) || mi <= 0) return;
@@ -4960,6 +5102,8 @@ window.CMG = window.CMG || {};
         interactive: false
       }).addTo(MV.map);
       MV._rings.push(circle);
+
+      if (!withTags) return;
 
       var edge = L.latLng(subject.lat, subject.lng);
       var north = MV.map.latLngToContainerPoint(edge);
@@ -4986,11 +5130,14 @@ window.CMG = window.CMG || {};
   function drawConnectors() {
     clearLayerList(MV._connectors);
     if (!Store.state.style.showConnectors) return;
-    var subject = Store.state.subject;
-    if (subject.lat == null) return;
 
     Store.state.comps.forEach(function (c) {
       if (c.lat == null) return;
+      // Drawn to the nearest subject, which is the relationship the reader is
+      // being shown. Lines to every subject would be a cat's cradle.
+      var near = Store.nearestSubject(c);
+      if (!near) return;
+      var subject = near.subject;
       var line = L.polyline([[subject.lat, subject.lng], [c.lat, c.lng]], {
         color: token('connector'),
         weight: 1.4 * MV.uiScale,
@@ -5017,15 +5164,18 @@ window.CMG = window.CMG || {};
   MV.renderLegend = function () {
     var s = Store.state.style;
     var tbody = document.getElementById('legendRows');
-    var subject = Store.state.subject;
+    var many = Store.state.subjects.length > 1;
     var rows = [];
 
     function cell(p, distance) {
       var swatch = '<td class="lg-key"><span class="lg-dot" style="background:' +
                    U.escapeHtml(colorFor(p)) + '">' +
-                   U.escapeHtml(p.role === 'subject' ? 'S' : String(p.number)) +
+                   U.escapeHtml(Store.keyFor(p)) +
                    '</span></td>';
-      var main = (p.address || '').split(',')[0] || (p.role === 'subject' ? 'Subject' : 'Comparable ' + p.number);
+      var fallback = p.role === 'subject'
+        ? (many ? 'Subject ' + p.number : 'Subject')
+        : 'Comparable ' + p.number;
+      var main = (p.address || '').split(',')[0] || fallback;
       var extras = [];
       if (p.role === 'comp') {
         var money = U.formatMoney(p.fields.salePrice);
@@ -5040,11 +5190,16 @@ window.CMG = window.CMG || {};
              U.escapeHtml(main) + detail + '</td>' + dist + '</tr>';
     }
 
-    if (subject.lat != null || subject.address) rows.push(cell(subject, null));
+    Store.state.subjects.forEach(function (sub) {
+      if (sub.lat != null || sub.address) rows.push(cell(sub, null));
+    });
     Store.state.comps.forEach(function (c) {
       var d = null;
-      if (s.legendDistance && subject.lat != null && c.lat != null) {
-        d = U.formatDistance(U.distanceMiles(subject, c)) + ' ' + U.bearingLabel(subject, c);
+      var near = s.legendDistance ? Store.nearestSubject(c) : null;
+      if (near) {
+        d = U.formatDistance(near.miles) + ' ' + U.bearingLabel(near.subject, c) +
+            // With one subject the reference is obvious; with several it is not.
+            (many ? ' of ' + Store.keyFor(near.subject) : '');
       }
       rows.push(cell(c, d));
     });
@@ -5092,7 +5247,7 @@ window.CMG = window.CMG || {};
   };
 
   MV.targetProperty = function () {
-    return Store.find(MV.selectedId) || Store.state.subject;
+    return Store.find(MV.selectedId) || Store.primarySubject();
   };
 
   MV.onMapClick = function (e) {
@@ -5182,7 +5337,7 @@ window.CMG = window.CMG || {};
       targetId: targetId || MV.targetProperty().id,
       points: [],
       line: L.polyline([], {
-        color: colorFor(Store.find(targetId || MV.targetProperty().id) || Store.state.subject),
+        color: colorFor(Store.find(targetId || MV.targetProperty().id) || Store.primarySubject()),
         weight: 3, dashArray: '6,5',
         renderer: MV._renderer, pane: 'parcelPane', interactive: false
       }).addTo(MV.map),
@@ -5198,7 +5353,7 @@ window.CMG = window.CMG || {};
       MV._draw.points.length > 2 ? [MV._draw.points[0]] : []));
     L.circleMarker(latlng, {
       radius: 4, color: token('pinStroke'), weight: 2,
-      fillColor: colorFor(Store.find(MV._draw.targetId) || Store.state.subject),
+      fillColor: colorFor(Store.find(MV._draw.targetId) || Store.primarySubject()),
       fillOpacity: 1, renderer: MV._renderer, pane: 'parcelPane', interactive: false
     }).addTo(MV._draw.vertices);
   };
@@ -5210,7 +5365,7 @@ window.CMG = window.CMG || {};
     MV._draw.points.forEach(function (ll) {
       L.circleMarker(ll, {
         radius: 4, color: token('pinStroke'), weight: 2,
-        fillColor: colorFor(Store.find(MV._draw.targetId) || Store.state.subject),
+        fillColor: colorFor(Store.find(MV._draw.targetId) || Store.primarySubject()),
         fillOpacity: 1, renderer: MV._renderer, pane: 'parcelPane', interactive: false
       }).addTo(MV._draw.vertices);
     });
@@ -5230,7 +5385,7 @@ window.CMG = window.CMG || {};
       return;
     }
     var parcel = CMG.parcels.fromDrawnPoints(pts);
-    var target = Store.find(targetId) || Store.state.subject;
+    var target = Store.find(targetId) || Store.primarySubject();
     Store.pushUndo();
     target.parcel = parcel;
     if (target.lat == null && parcel.centroid) {
@@ -5354,11 +5509,21 @@ window.CMG = window.CMG || {};
     return true;
   };
 
+  /** Frame the subject — or, on a portfolio map, all of them together. */
   MV.fitSubject = function () {
-    var s = Store.state.subject;
-    if (s.lat == null) return false;
-    MV.releaseAutoFit('Centred on the subject');
-    MV.map.setView([s.lat, s.lng], Math.max(MV.map.getZoom(), 17), { animate: false });
+    var pts = Store.state.subjects
+      .filter(function (s) { return s.lat != null; })
+      .map(function (s) { return [s.lat, s.lng]; });
+    if (!pts.length) return false;
+
+    MV.releaseAutoFit(pts.length > 1 ? 'Centred on the subjects' : 'Centred on the subject');
+    if (pts.length === 1) {
+      MV.map.setView(pts[0], Math.max(MV.map.getZoom(), 17), { animate: false });
+    } else {
+      MV.map.fitBounds(L.latLngBounds(pts), {
+        paddingTopLeft: FIT_PAD_TL, paddingBottomRight: FIT_PAD_BR, animate: false
+      });
+    }
     return true;
   };
 
@@ -5654,9 +5819,8 @@ window.CMG = window.CMG || {};
 
   function badge(p) {
     var color = CMG.theme.colorFor(p);
-    var text = p.role === 'subject' ? 'S' : String(p.number);
     return '<span class="prop-badge" style="background:' + U.escapeHtml(color) + '">' +
-           U.escapeHtml(text) + '</span>';
+           U.escapeHtml(Store.keyFor(p)) + '</span>';
   }
 
   function locationBadge(p) {
@@ -5705,11 +5869,15 @@ window.CMG = window.CMG || {};
   }
 
   function distanceNote(p) {
-    var s = Store.state.subject;
-    if (p.role !== 'comp' || s.lat == null || p.lat == null) return '';
-    var d = U.distanceMiles(s, p);
-    return '<span class="loc loc-dist">' + U.formatDistance(d) + ' ' +
-           U.bearingLabel(s, p) + ' of subject</span>';
+    if (p.role !== 'comp') return '';
+    var near = Store.nearestSubject(p);
+    if (!near) return '';
+    // Measured to the nearest subject, and named when there is more than one.
+    var of = Store.subjects().length > 1
+      ? 'of ' + Store.keyFor(near.subject)
+      : 'of subject';
+    return '<span class="loc loc-dist">' + U.formatDistance(near.miles) + ' ' +
+           U.bearingLabel(near.subject, p) + ' ' + of + '</span>';
   }
 
   function cardHtml(p) {
@@ -5789,7 +5957,9 @@ window.CMG = window.CMG || {};
           '<span>Colour</span></label>' +
         (p.color ? '<button class="btn btn-sm" data-act="clearColor">Use palette</button>' : '') +
       '</div>' +
-      (isComp ?
+      // A portfolio's subjects reorder and delete exactly like comparables.
+      // The last remaining subject can only be cleared, never removed.
+      (isComp || Store.subjects().length > 1 ?
       '<div class="btn-row wrap">' +
         '<button class="btn btn-sm" data-act="up">Move up</button>' +
         '<button class="btn btn-sm" data-act="down">Move down</button>' +
@@ -5822,7 +5992,13 @@ window.CMG = window.CMG || {};
     try {
       UI.updateFirstRun();
       UI.updateStage();
-      $('#subjectCard').innerHTML = cardHtml(Store.state.subject);
+      $('#subjectCard').innerHTML = Store.subjects().map(cardHtml).join('');
+      $('#subjectCount').textContent = String(Store.subjects().length);
+      $('#subjectPanel').classList.toggle('is-portfolio', Store.subjects().length > 1);
+      $('#subjectHeading').textContent =
+        Store.subjects().length > 1 ? 'Subject Properties' : 'Subject Property';
+      $('#fitSubject').textContent =
+        Store.subjects().length > 1 ? 'Centre on the subjects' : 'Centre on subject';
       $('#compList').innerHTML = Store.state.comps.map(cardHtml).join('') ||
         '<p class="empty">No comparables yet. Add one below, or paste a list of addresses.</p>';
       $('#compCount').textContent = String(Store.state.comps.length);
@@ -5961,18 +6137,31 @@ window.CMG = window.CMG || {};
         Store.emit('properties');
         break;
 
-      case 'up': Store.moveComp(p.id, -1); break;
-      case 'down': Store.moveComp(p.id, 1); break;
+      case 'up':
+        if (p.role === 'subject') Store.moveSubject(p.id, -1);
+        else Store.moveComp(p.id, -1);
+        break;
+
+      case 'down':
+        if (p.role === 'subject') Store.moveSubject(p.id, 1);
+        else Store.moveComp(p.id, 1);
+        break;
 
       case 'remove':
-        Store.removeComp(p.id);
-        UI.status('Comparable removed.');
+        if (p.role === 'subject') {
+          Store.removeSubject(p.id);
+          UI.status('Subject removed.');
+        } else {
+          Store.removeComp(p.id);
+          UI.status('Comparable removed.');
+        }
         break;
     }
   }
 
   function describe(p) {
-    return p.role === 'subject' ? 'the subject' : 'comparable ' + p.number;
+    if (p.role !== 'subject') return 'comparable ' + p.number;
+    return Store.subjects().length > 1 ? 'subject ' + p.number : 'the subject';
   }
 
   /* -------------------------------------------------------------- geocoding */
@@ -6644,8 +6833,8 @@ window.CMG = window.CMG || {};
    */
   UI.autoPickCounty = function () {
     if (!$('#autoCounty') || !$('#autoCounty').checked) return Promise.resolve(null);
-    var s = Store.state.subject;
-    if (s.lat == null) return Promise.resolve(null);
+    var s = Store.primarySubject();
+    if (!s || s.lat == null) return Promise.resolve(null);
 
     return CMG.parcels.countyAt(s.lat, s.lng).then(function (name) {
       var match = CMG.parcels.matchCounty(name);
@@ -6846,10 +7035,17 @@ window.CMG = window.CMG || {};
 
     $('#addComp').addEventListener('click', function () {
       var c = Store.addComp('');
-      UI.expanded[c.id] = true;
       UI.renderCards();
-      var input = $('#compList .prop-card[data-id="' + c.id + '"] .prop-address');
-      if (input) input.focus();
+      focusCard('#compList', c.id);
+    });
+
+    // Portfolio valuations carry several subjects on one map — as many as the
+    // holding has. The comparables are shared across all of them.
+    $('#addSubject').addEventListener('click', function () {
+      var s = Store.addSubject('');
+      UI.renderCards();
+      focusCard('#subjectCard', s.id);
+      UI.status('Second subject added — comparables are shared across every subject.');
     });
 
     $('#locateAll').addEventListener('click', function () { UI.locateAllMissing(); });
@@ -6975,7 +7171,7 @@ window.CMG = window.CMG || {};
     var dismissed = false;
     try { dismissed = localStorage.getItem(CMG.FIRSTRUN_KEY) === '1'; } catch (e) { dismissed = false; }
     var empty = !Store.located().length && !Store.state.comps.length &&
-                !(Store.state.subject.address || '').trim();
+                !Store.all().some(function (p) { return (p.address || '').trim(); });
     host.hidden = dismissed || !empty;
   };
 
@@ -6996,7 +7192,7 @@ window.CMG = window.CMG || {};
     if (Store.located().length) UI.revealed = true;
     document.body.classList.toggle('has-located', UI.revealed);
 
-    var waiting = [Store.state.subject].concat(Store.state.comps).some(function (p) {
+    var waiting = Store.all().some(function (p) {
       return (p.address || '').trim() && p.lat == null;
     });
     document.body.classList.toggle('nothing-to-locate', !waiting);
@@ -7104,6 +7300,11 @@ window.CMG = window.CMG || {};
   };
 
   /* ------------------------------------------------------------------ wiring */
+
+  function focusCard(hostSel, id) {
+    var input = $(hostSel + ' .prop-card[data-id="' + id + '"] .prop-address');
+    if (input) input.focus();
+  }
 
   UI.wireCards = function () {
     ['#subjectCard', '#compList'].forEach(function (sel) {
@@ -7698,15 +7899,16 @@ window.CMG = window.CMG || {};
     st.title = 'Comparable Sales Map';
     st.subtitle = 'File #2026-0142 — LoDo / Ballpark';
 
-    st.subject.address = '1600 Broadway, Denver, CO 80202';
-    st.subject.lat = 39.74390;
-    st.subject.lng = -104.98730;
-    st.subject.geocode = {
+    var subject = st.subjects[0];
+    subject.address = '1600 Broadway, Denver, CO 80202';
+    subject.lat = 39.74390;
+    subject.lng = -104.98730;
+    subject.geocode = {
       provider: 'census', providerName: 'US Census (demo)',
       matchedAddress: '1600 BROADWAY, DENVER, CO 80202',
       score: 96, precision: 'rooftop', agreement: 2, spreadFeet: 18
     };
-    st.subject.fields.size = '0.34 ac';
+    subject.fields.size = '0.34 ac';
 
     [['1701 Wynkoop St, Denver, CO 80202', 39.75300, -105.00020, '4/2026', '6,850,000', '0.41 ac', '$246 / SF'],
      ['1144 15th St, Denver, CO 80202', 39.74900, -104.99590, '2/2026', '4,250,000', '0.28 ac', '$212 / SF'],
@@ -7726,7 +7928,7 @@ window.CMG = window.CMG || {};
       S.refreshLabel(c);
     });
 
-    S.refreshLabel(st.subject);
+    S.refreshLabel(subject);
     // A real county from the registry, so the picker reads correctly; only the
     // service behind it is simulated.
     var denver = CMG.parcels.county('denver');

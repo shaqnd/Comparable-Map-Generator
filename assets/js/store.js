@@ -6,11 +6,19 @@
 
   var U = CMG.util;
 
+  /* The property record.
+
+     Beyond what the map draws, each record carries the fields the product
+     strategy calls for in Phase 0 — a canonical id, a subject profile that can
+     describe a property without naming it, and verification as an append-only
+     list of observations rather than a boolean. Nothing in the map UI writes
+     the latter two yet; they exist so that a saved job is a structured record
+     from the first release instead of a screenshot with coordinates. */
   function blankProperty(role, number) {
     return {
       id: U.uid(role),
       role: role,                 // 'subject' | 'comp'
-      number: number || null,     // comps are numbered 1..n
+      number: number || null,     // numbered 1..n within its own role
       address: '',
       lat: null,
       lng: null,
@@ -28,8 +36,45 @@
       color: null,                // overrides the theme palette for this one property
       labelOffset: null,          // {x,y} in pixels from the pin, at zoom-independent scale
       showLabel: true,
-      parcel: null                // { geometry, attributes, source }
+      parcel: null,               // { geometry, attributes, source }
+
+      /* Phase-0 structure, not yet surfaced in the UI. */
+      profile: {},                // subjects: type, age, size, class, submarket…
+      verifications: [],          // comps: one record per observation, never overwritten
+      source: null                // where the sale data came from
     };
+  }
+
+  /* The two lists behave identically; only the record's role differs. */
+  function addTo(listKey, role, address, batched) {
+    if (!batched) Store.pushUndo();
+    var heads = Store.headings();
+    var p = blankProperty(role, Store.state[listKey].length + 1);
+    p.address = address || '';
+    Store.state[listKey].push(p);
+    Store.renumber(heads);
+    Store.emit('properties');
+    return p;
+  }
+
+  function removeFrom(listKey, id) {
+    Store.pushUndo();
+    var heads = Store.headings();
+    Store.state[listKey] = Store.state[listKey].filter(function (p) { return p.id !== id; });
+    Store.renumber(heads);
+    Store.emit('properties');
+  }
+
+  function moveWithin(listKey, id, delta) {
+    var arr = Store.state[listKey];
+    var i = arr.findIndex(function (p) { return p.id === id; });
+    var j = i + delta;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    Store.pushUndo();
+    var heads = Store.headings();
+    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    Store.renumber(heads);
+    Store.emit('properties');
   }
 
   var Store = {
@@ -51,11 +96,12 @@
     blankProject: function () {
       return {
         version: CMG.PROJECT_VERSION,
+        schema: CMG.SCHEMA_ID,      // names the record shape, not the app build
         id: U.uid('map'),           // stable across saves; the counter dedupes on it
         title: 'Comparable Sales Map',
         subtitle: '',
         exportName: '',
-        subject: blankProperty('subject'),
+        subjects: [blankProperty('subject', 1)],
         comps: [],
         view: JSON.parse(JSON.stringify(CMG.DEFAULT_VIEW)),
         style: JSON.parse(JSON.stringify(CMG.DEFAULT_STYLE)),
@@ -85,15 +131,26 @@
       out.view = Object.assign({}, base.view, p.view || {});
       out.exportCfg = Object.assign({}, base.exportCfg, p.exportCfg || {});
       out.parcelService = Object.assign({}, base.parcelService, p.parcelService || {});
-      out.subject = Object.assign(blankProperty('subject'), p.subject || {});
-      out.subject.fields = Object.assign(blankProperty('subject').fields, (p.subject || {}).fields || {});
-      out.comps = (p.comps || []).map(function (c, i) {
-        var merged = Object.assign(blankProperty('comp', i + 1), c);
-        merged.fields = Object.assign(blankProperty('comp').fields, c.fields || {});
+      function restore(role, raw, i) {
+        var blank = blankProperty(role, i + 1);
+        var merged = Object.assign(blank, raw || {});
+        merged.fields = Object.assign(blankProperty(role).fields, (raw || {}).fields || {});
+        merged.profile = Object.assign({}, (raw || {}).profile || {});
+        merged.verifications = ((raw || {}).verifications || []).slice();
+        merged.role = role;
         merged.number = i + 1;
         return merged;
-      });
+      }
+
+      // Files written before portfolios carried a single `subject`.
+      var rawSubjects = p.subjects || (p.subject ? [p.subject] : []);
+      out.subjects = rawSubjects.map(function (s, i) { return restore('subject', s, i); });
+      if (!out.subjects.length) out.subjects = [blankProperty('subject', 1)];
+      delete out.subject;
+
+      out.comps = (p.comps || []).map(function (c, i) { return restore('comp', c, i); });
       out.version = CMG.PROJECT_VERSION;
+      out.schema = CMG.SCHEMA_ID;
       return out;
     },
 
@@ -132,7 +189,50 @@
     /* ------------------------------------------------------------- accessors */
 
     all: function () {
-      return [Store.state.subject].concat(Store.state.comps);
+      return Store.state.subjects.concat(Store.state.comps);
+    },
+
+    subjects: function () { return Store.state.subjects; },
+
+    /** The first subject — what a single-subject operation should act on. */
+    primarySubject: function () {
+      var located = Store.state.subjects.filter(function (s) { return s.lat != null; });
+      return located[0] || Store.state.subjects[0];
+    },
+
+    /**
+     * The subject a comparable sits closest to. On a portfolio map "3.4 mi SW
+     * of subject" is meaningless — the reader needs to know which one.
+     * @returns {{subject: object, miles: number}|null}
+     */
+    nearestSubject: function (p) {
+      if (!p || p.lat == null) return null;
+      var best = null;
+      Store.state.subjects.forEach(function (s) {
+        if (s.lat == null || s.id === p.id) return;
+        var d = U.distanceMiles(s, p);
+        if (!best || d < best.miles) best = { subject: s, miles: d };
+      });
+      return best;
+    },
+
+    /** The short key drawn on the pin, the card badge and the legend swatch. */
+    keyFor: function (p) {
+      if (p.role !== 'subject') return String(p.number || '');
+      return Store.state.subjects.length > 1 ? 'S' + (p.number || 1) : 'S';
+    },
+
+    /** The auto-generated first line of a map label. */
+    headingFor: function (p) {
+      if (p.role !== 'subject') return 'COMPARABLE ' + (p.number || '');
+      return Store.state.subjects.length > 1 ? 'SUBJECT ' + (p.number || 1) : 'SUBJECT';
+    },
+
+    /** Every current heading, keyed by id — snapshot this before renumbering. */
+    headings: function () {
+      var m = {};
+      Store.all().forEach(function (p) { m[p.id] = Store.headingFor(p); });
+      return m;
     },
 
     located: function () {
@@ -145,56 +245,67 @@
 
     /* ------------------------------------------------------------- mutations */
 
+    /* Both lists are unbounded: a portfolio can carry as many subjects as it
+       owns, and a valuation as many comparables as it cites. Numbering,
+       colours and label headings all derive from position, so nothing here
+       has a ceiling. */
+
     /** @param {boolean} [batched] caller owns the undo snapshot for the batch */
     addComp: function (address, batched) {
-      if (!batched) Store.pushUndo();
-      var c = blankProperty('comp', Store.state.comps.length + 1);
-      c.address = address || '';
-      Store.state.comps.push(c);
-      Store.renumber();
-      Store.emit('properties');
-      return c;
+      return addTo('comps', 'comp', address, batched);
     },
 
-    removeComp: function (id) {
-      Store.pushUndo();
-      Store.state.comps = Store.state.comps.filter(function (c) { return c.id !== id; });
-      Store.renumber();
-      Store.emit('properties');
+    addSubject: function (address, batched) {
+      return addTo('subjects', 'subject', address, batched);
     },
 
-    moveComp: function (id, delta) {
-      var i = Store.state.comps.findIndex(function (c) { return c.id === id; });
-      var j = i + delta;
-      if (i < 0 || j < 0 || j >= Store.state.comps.length) return;
-      Store.pushUndo();
-      var arr = Store.state.comps;
-      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-      Store.renumber();
-      Store.emit('properties');
+    removeComp: function (id) { removeFrom('comps', id); },
+
+    /** A map always has at least one subject; removing the last one blanks it. */
+    removeSubject: function (id) {
+      if (Store.state.subjects.length <= 1) {
+        var only = Store.state.subjects[0];
+        if (!only || only.id !== id) return false;
+        Store.pushUndo();
+        Store.state.subjects = [blankProperty('subject', 1)];
+        Store.renumber();
+        Store.emit('properties');
+        return true;
+      }
+      removeFrom('subjects', id);
+      return true;
     },
 
-    renumber: function () {
-      Store.state.comps.forEach(function (c, i) {
-        var was = c.number;
-        c.number = i + 1;
-        if (!c.labelCustom) { Store.refreshLabel(c); return; }
-        // A hand-written label is the appraiser's text and stays theirs, but a
-        // heading that names the old number would now contradict the pin.
-        if (was !== c.number) Store.renumberLabel(c, was);
+    moveComp: function (id, delta) { moveWithin('comps', id, delta); },
+    moveSubject: function (id, delta) { moveWithin('subjects', id, delta); },
+
+    /**
+     * Renumber both lists and bring auto-generated headings back in line.
+     * @param {Object.<string,string>} [oldHeads] headings captured before the
+     *        change, so a hand-written label whose first line is still the old
+     *        auto heading can be retitled rather than left contradicting the pin.
+     */
+    renumber: function (oldHeads) {
+      Store.state.subjects.forEach(function (p, i) { p.number = i + 1; });
+      Store.state.comps.forEach(function (c, i) { c.number = i + 1; });
+
+      Store.all().forEach(function (p) {
+        if (!p.labelCustom) { Store.refreshLabel(p); return; }
+        // A hand-written label is the appraiser's text and stays theirs — all
+        // that is corrected is a heading that now names the wrong pin.
+        if (oldHeads && oldHeads[p.id]) Store.retitleLabel(p, oldHeads[p.id]);
       });
-      if (!Store.state.subject.labelCustom) Store.refreshLabel(Store.state.subject);
     },
 
-    /** Rewrite only a leading "COMPARABLE <n>" heading, leaving the rest alone. */
-    renumberLabel: function (p, oldNumber) {
+    /** Replace a leading auto heading, leaving every other line alone. */
+    retitleLabel: function (p, oldHeading) {
       var lines = String(p.labelText || '').split('\n');
       if (!lines.length) return;
-      var head = new RegExp('^(\\s*COMPARABLE\\s+)' + oldNumber + '(\\s*)$', 'i');
-      if (head.test(lines[0])) {
-        lines[0] = lines[0].replace(head, '$1' + p.number + '$2');
-        p.labelText = lines.join('\n');
-      }
+      var now = Store.headingFor(p);
+      if (lines[0].trim().toUpperCase() !== String(oldHeading).toUpperCase()) return;
+      if (lines[0].trim() === now) return;
+      lines[0] = lines[0].replace(/\S.*\S|\S/, now);
+      p.labelText = lines.join('\n');
     },
 
     setLocation: function (id, lat, lng, geocode, pinned) {
@@ -225,7 +336,7 @@
      */
     refreshLabel: function (p) {
       var lines = [];
-      lines.push(p.role === 'subject' ? 'SUBJECT' : ('COMPARABLE ' + (p.number || '')));
+      lines.push(Store.headingFor(p));
 
       var addr = (p.address || '').trim();
       if (addr) {

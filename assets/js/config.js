@@ -373,6 +373,12 @@
 
   CMG.STORAGE_KEY = 'cmg.project.v1';
   CMG.PRESET_KEY = 'cmg.parcelPresets.v1';
-  CMG.PROJECT_VERSION = 1;
+  CMG.PROJECT_VERSION = 2;      // 2 = many subjects; 1 files still open
+
+  /* Names the shape of a saved job, separately from the app build that wrote
+     it. Anything that later reads these files — a comp repository, a sync
+     service — keys off this, not off the version number of the map tool.
+     See docs/DATA-MODEL.md. */
+  CMG.SCHEMA_ID = 'mapcomps.project/1';
 
 })(window.CMG);

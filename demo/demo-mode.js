@@ -474,15 +474,16 @@
     st.title = 'Comparable Sales Map';
     st.subtitle = 'File #2026-0142 — LoDo / Ballpark';
 
-    st.subject.address = '1600 Broadway, Denver, CO 80202';
-    st.subject.lat = 39.74390;
-    st.subject.lng = -104.98730;
-    st.subject.geocode = {
+    var subject = st.subjects[0];
+    subject.address = '1600 Broadway, Denver, CO 80202';
+    subject.lat = 39.74390;
+    subject.lng = -104.98730;
+    subject.geocode = {
       provider: 'census', providerName: 'US Census (demo)',
       matchedAddress: '1600 BROADWAY, DENVER, CO 80202',
       score: 96, precision: 'rooftop', agreement: 2, spreadFeet: 18
     };
-    st.subject.fields.size = '0.34 ac';
+    subject.fields.size = '0.34 ac';
 
     [['1701 Wynkoop St, Denver, CO 80202', 39.75300, -105.00020, '4/2026', '6,850,000', '0.41 ac', '$246 / SF'],
      ['1144 15th St, Denver, CO 80202', 39.74900, -104.99590, '2/2026', '4,250,000', '0.28 ac', '$212 / SF'],
@@ -502,7 +503,7 @@
       S.refreshLabel(c);
     });
 
-    S.refreshLabel(st.subject);
+    S.refreshLabel(subject);
     // A real county from the registry, so the picker reads correctly; only the
     // service behind it is simulated.
     var denver = CMG.parcels.county('denver');

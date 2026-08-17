@@ -333,7 +333,7 @@ function seedBoot(project, autorun) {
   CMG.store.init = function () {
     var restored = origInit.apply(this, arguments);
     var empty = !CMG.store.located().length && !CMG.store.state.comps.length &&
-                !(CMG.store.state.subject.address || '').trim();
+                !CMG.store.all().some(function (p) { return (p.address || '').trim(); });
     if (empty) {
       CMG.store.state = CMG.store.migrate(JSON.parse(JSON.stringify(SEED)));
       CMG.store.renumber();

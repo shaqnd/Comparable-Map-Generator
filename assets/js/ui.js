@@ -49,9 +49,8 @@
 
   function badge(p) {
     var color = CMG.theme.colorFor(p);
-    var text = p.role === 'subject' ? 'S' : String(p.number);
     return '<span class="prop-badge" style="background:' + U.escapeHtml(color) + '">' +
-           U.escapeHtml(text) + '</span>';
+           U.escapeHtml(Store.keyFor(p)) + '</span>';
   }
 
   function locationBadge(p) {
@@ -100,11 +99,15 @@
   }
 
   function distanceNote(p) {
-    var s = Store.state.subject;
-    if (p.role !== 'comp' || s.lat == null || p.lat == null) return '';
-    var d = U.distanceMiles(s, p);
-    return '<span class="loc loc-dist">' + U.formatDistance(d) + ' ' +
-           U.bearingLabel(s, p) + ' of subject</span>';
+    if (p.role !== 'comp') return '';
+    var near = Store.nearestSubject(p);
+    if (!near) return '';
+    // Measured to the nearest subject, and named when there is more than one.
+    var of = Store.subjects().length > 1
+      ? 'of ' + Store.keyFor(near.subject)
+      : 'of subject';
+    return '<span class="loc loc-dist">' + U.formatDistance(near.miles) + ' ' +
+           U.bearingLabel(near.subject, p) + ' ' + of + '</span>';
   }
 
   function cardHtml(p) {
@@ -184,7 +187,9 @@
           '<span>Colour</span></label>' +
         (p.color ? '<button class="btn btn-sm" data-act="clearColor">Use palette</button>' : '') +
       '</div>' +
-      (isComp ?
+      // A portfolio's subjects reorder and delete exactly like comparables.
+      // The last remaining subject can only be cleared, never removed.
+      (isComp || Store.subjects().length > 1 ?
       '<div class="btn-row wrap">' +
         '<button class="btn btn-sm" data-act="up">Move up</button>' +
         '<button class="btn btn-sm" data-act="down">Move down</button>' +
@@ -217,7 +222,13 @@
     try {
       UI.updateFirstRun();
       UI.updateStage();
-      $('#subjectCard').innerHTML = cardHtml(Store.state.subject);
+      $('#subjectCard').innerHTML = Store.subjects().map(cardHtml).join('');
+      $('#subjectCount').textContent = String(Store.subjects().length);
+      $('#subjectPanel').classList.toggle('is-portfolio', Store.subjects().length > 1);
+      $('#subjectHeading').textContent =
+        Store.subjects().length > 1 ? 'Subject Properties' : 'Subject Property';
+      $('#fitSubject').textContent =
+        Store.subjects().length > 1 ? 'Centre on the subjects' : 'Centre on subject';
       $('#compList').innerHTML = Store.state.comps.map(cardHtml).join('') ||
         '<p class="empty">No comparables yet. Add one below, or paste a list of addresses.</p>';
       $('#compCount').textContent = String(Store.state.comps.length);
@@ -356,18 +367,31 @@
         Store.emit('properties');
         break;
 
-      case 'up': Store.moveComp(p.id, -1); break;
-      case 'down': Store.moveComp(p.id, 1); break;
+      case 'up':
+        if (p.role === 'subject') Store.moveSubject(p.id, -1);
+        else Store.moveComp(p.id, -1);
+        break;
+
+      case 'down':
+        if (p.role === 'subject') Store.moveSubject(p.id, 1);
+        else Store.moveComp(p.id, 1);
+        break;
 
       case 'remove':
-        Store.removeComp(p.id);
-        UI.status('Comparable removed.');
+        if (p.role === 'subject') {
+          Store.removeSubject(p.id);
+          UI.status('Subject removed.');
+        } else {
+          Store.removeComp(p.id);
+          UI.status('Comparable removed.');
+        }
         break;
     }
   }
 
   function describe(p) {
-    return p.role === 'subject' ? 'the subject' : 'comparable ' + p.number;
+    if (p.role !== 'subject') return 'comparable ' + p.number;
+    return Store.subjects().length > 1 ? 'subject ' + p.number : 'the subject';
   }
 
   /* -------------------------------------------------------------- geocoding */
@@ -1039,8 +1063,8 @@
    */
   UI.autoPickCounty = function () {
     if (!$('#autoCounty') || !$('#autoCounty').checked) return Promise.resolve(null);
-    var s = Store.state.subject;
-    if (s.lat == null) return Promise.resolve(null);
+    var s = Store.primarySubject();
+    if (!s || s.lat == null) return Promise.resolve(null);
 
     return CMG.parcels.countyAt(s.lat, s.lng).then(function (name) {
       var match = CMG.parcels.matchCounty(name);
@@ -1241,10 +1265,17 @@
 
     $('#addComp').addEventListener('click', function () {
       var c = Store.addComp('');
-      UI.expanded[c.id] = true;
       UI.renderCards();
-      var input = $('#compList .prop-card[data-id="' + c.id + '"] .prop-address');
-      if (input) input.focus();
+      focusCard('#compList', c.id);
+    });
+
+    // Portfolio valuations carry several subjects on one map — as many as the
+    // holding has. The comparables are shared across all of them.
+    $('#addSubject').addEventListener('click', function () {
+      var s = Store.addSubject('');
+      UI.renderCards();
+      focusCard('#subjectCard', s.id);
+      UI.status('Second subject added — comparables are shared across every subject.');
     });
 
     $('#locateAll').addEventListener('click', function () { UI.locateAllMissing(); });
@@ -1370,7 +1401,7 @@
     var dismissed = false;
     try { dismissed = localStorage.getItem(CMG.FIRSTRUN_KEY) === '1'; } catch (e) { dismissed = false; }
     var empty = !Store.located().length && !Store.state.comps.length &&
-                !(Store.state.subject.address || '').trim();
+                !Store.all().some(function (p) { return (p.address || '').trim(); });
     host.hidden = dismissed || !empty;
   };
 
@@ -1391,7 +1422,7 @@
     if (Store.located().length) UI.revealed = true;
     document.body.classList.toggle('has-located', UI.revealed);
 
-    var waiting = [Store.state.subject].concat(Store.state.comps).some(function (p) {
+    var waiting = Store.all().some(function (p) {
       return (p.address || '').trim() && p.lat == null;
     });
     document.body.classList.toggle('nothing-to-locate', !waiting);
@@ -1499,6 +1530,11 @@
   };
 
   /* ------------------------------------------------------------------ wiring */
+
+  function focusCard(hostSel, id) {
+    var input = $(hostSel + ' .prop-card[data-id="' + id + '"] .prop-address');
+    if (input) input.focus();
+  }
 
   UI.wireCards = function () {
     ['#subjectCard', '#compList'].forEach(function (sel) {
