@@ -3105,6 +3105,15 @@ window.CMG = window.CMG || {};
         title: 'Comparable Sales Map',
         subtitle: '',
         exportName: '',
+
+        /* Reserved for the environment model: one environment per assessor's
+           office or appraisal company. Inside an environment nothing is hidden —
+           a subject address is the firm's own work product. Redaction happens
+           only when someone outside the environment reads the shared corpus,
+           which makes it a read-time projection rather than something stripped
+           on save. Unset until there is a server to enforce it. */
+        environmentId: null,
+        createdBy: null,
         subjects: [blankProperty('subject', 1)],
         comps: [],
         view: JSON.parse(JSON.stringify(CMG.DEFAULT_VIEW)),

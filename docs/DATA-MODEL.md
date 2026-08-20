@@ -65,18 +65,38 @@ A property record:
 The brief models the durable asset as **subject profile → comp relationship →
 verified sale**. Here is where each one currently lives.
 
-### Subject profile
+### Subject profile, and who is allowed to see it
 
-`subjects[]` with a `profile` object reserved on each. The brief wants a subject
-describable *without naming it* — property type, age range, size or unit range,
-class, condition, valuation date, broad submarket — so a comp relationship can
-be published while the subject stays anonymous.
+`subjects[]` with a `profile` object reserved on each: property type, age range,
+size or unit range, class, condition, valuation date, broad submarket.
 
-Today the map needs the exact address to draw a pin, so `address` is populated
-and `profile` is empty. **The anonymisation boundary is already drawn in the
-right place**: everything the brief wants to publish lives in `profile`,
-everything it wants withheld lives in the sibling fields. A future export can
-ship `profile` and drop `address`/`lat`/`lng` without restructuring anything.
+**The subject address is not hidden from the person who entered it.** It is their
+own work product, fully visible to them and to everyone in their environment —
+one environment per county assessor's office or appraisal company. Redaction
+happens only at the boundary between environments, when someone outside reads the
+shared corpus.
+
+That makes anonymisation an **access-layer concern, not a storage concern**. The
+record is stored whole and projected down on read according to who is asking.
+Stripping fields at write time would destroy the author's own file to protect
+them from themselves, and it could not be undone.
+
+| Viewer | Subject address | Subject profile | Comparable sale | Adjustments, notes |
+| --- | --- | --- | --- | --- |
+| Author | full | full | full | full |
+| Same environment | full | full | full | full |
+| Another environment | hidden | visible | visible | hidden |
+| Platform analytics | hidden | aggregated | visible | aggregated |
+
+The asymmetry is the point. A comparable sale is a recorded public transaction, so
+it can be identified and verified across every environment — that is what makes a
+shared corpus worth having. A subject under valuation is client work and stays
+inside the firm that produced it. **The relationship between the two travels; the
+identity of the subject does not.**
+
+The split is already drawn in the right place in the record: what may cross the
+boundary lives in `profile`, what may not lives in the sibling fields, so the
+read-time projection is a field allow-list rather than a restructuring.
 
 ### Comp relationship
 
@@ -118,6 +138,7 @@ records rather than screenshots with coordinates attached.
 | Not built | Why | Phase |
 | --- | --- | --- |
 | Accounts, server storage | Everything is local: `localStorage` plus a `.cmap.json` file. No account, no upload, no backend to run. | 2 |
+| Environment enforcement | `environmentId` and `createdBy` are carried but unset. With no server there is no cross-environment read to redact — the boundary is enforced where the sharing happens, which does not exist yet. | 2–3 |
 | Canonical cross-job sale IDs | Requires a server to reconcile against. Property `id`s are canonical *within* a job only. | 3 |
 | Verification UI | See above — it is Phase 3, and adding it now would slow the workflow the brief says to protect. | 3–4 |
 | Per-subject comp assignment | Shared pool covers the portfolio case; additive when needed. | 3 |
@@ -133,3 +154,9 @@ shape for (2) already in place and the seams for (3) marked.
 The one open question worth an explicit decision before Phase 3 is the comp
 relationship model above — shared pool versus per-subject assignment. It is
 recorded here rather than settled silently.
+
+On naming: the product name appears in exactly one constant
+(`CMG.PRODUCT_NAME`) and **never** in the stored record. The `schema` id is
+`comparable-sales-map/1` for that reason. The product will sit under the Forma
+Valuation umbrella and its own name is not yet fixed; neither fact should ever
+be able to invalidate a saved corpus.
