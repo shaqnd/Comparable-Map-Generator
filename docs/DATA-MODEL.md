@@ -14,7 +14,7 @@ Every saved job carries two version markers, and they are not the same thing:
 
 | Field | Meaning |
 | --- | --- |
-| `schema` | The shape of the record — `assessmapper.project/1`. Anything that later reads these files (a comp repository, a sync service, an importer) keys off this. |
+| `schema` | The shape of the record — `comparable-sales-map/1`. Anything that later reads these files (a comp repository, a sync service, an importer) keys off this. It carries **no product name**: the saved corpus is the asset the strategy rests on, and a branding decision must never invalidate it. |
 | `version` | The build of the map tool that wrote the file. Bumped when the tool's own migration logic changes. |
 
 Separating them means the map tool can change freely without invalidating a
@@ -24,7 +24,7 @@ stored corpus, and the record shape can be versioned on its own schedule.
 
 ```jsonc
 {
-  "schema": "assessmapper.project/1",
+  "schema": "comparable-sales-map/1",
   "version": 2,
   "id": "map_…",            // stable across saves; the map counter dedupes on it
   "title": "…",

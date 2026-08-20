@@ -53,6 +53,7 @@
       });
     });
 
+    applyProductName();
     UI.applyFrameSize();
     UI.renderCards();
     CMG.mapview.setMode('pan');
@@ -79,6 +80,22 @@
   function $sync() {
     document.getElementById('projectNameDisplay').textContent =
       Store.state.title || 'Untitled map';
+  }
+
+  /* The product name is undecided, so it is read from one constant rather than
+     written into the markup. Initials come from its capitals, so a rename needs
+     no second edit here. */
+  function applyProductName() {
+    var name = CMG.PRODUCT_NAME;
+    if (!name) return;
+    document.title = name;
+    var word = document.querySelector('.brand-text strong');
+    if (word) word.textContent = name;
+    var mark = document.querySelector('.brand-mark');
+    if (mark) {
+      var caps = name.replace(/[^A-Z]/g, '').slice(0, 2);
+      mark.textContent = caps || name.slice(0, 2).toUpperCase();
+    }
   }
 
   /** After opening a file or resetting, push the new state into every control. */

@@ -1858,9 +1858,9 @@ html, body {
   <!-- ───────────────────────── SIDEBAR ───────────────────────── -->
   <aside id="sidebar">
     <header class="brand">
-      <div class="brand-mark">AM</div>
+      <div class="brand-mark">CM</div>
       <div class="brand-text">
-        <strong>AssessMapper</strong>
+        <strong>Comparable Sales Map</strong>
         <span id="projectNameDisplay">Untitled map</span>
       </div>
     </header>
@@ -2892,11 +2892,20 @@ window.CMG = window.CMG || {};
   CMG.PRESET_KEY = 'cmg.parcelPresets.v1';
   CMG.PROJECT_VERSION = 2;      // 2 = many subjects; 1 files still open
 
+  /* The product name is not settled. It lives here and nowhere else, so the
+     decision is one edit rather than a migration: the window title, the sidebar
+     header and the single-file build titles all read it from here, and the
+     badge initials are derived from its capitals. */
+  CMG.PRODUCT_NAME = 'AssessMapper';   // working name — see the strategy brief
+
   /* Names the shape of a saved job, separately from the app build that wrote
      it. Anything that later reads these files — a comp repository, a sync
-     service — keys off this, not off the version number of the map tool.
+     service — keys off this.
+
+     Deliberately carries no product name. A saved corpus is the asset the whole
+     strategy rests on, and it must not be invalidated by a branding decision.
      See docs/DATA-MODEL.md. */
-  CMG.SCHEMA_ID = 'assessmapper.project/1';
+  CMG.SCHEMA_ID = 'comparable-sales-map/1';
 
 })(window.CMG);
 
@@ -8031,6 +8040,7 @@ window.CMG = window.CMG || {};
       });
     });
 
+    applyProductName();
     UI.applyFrameSize();
     UI.renderCards();
     CMG.mapview.setMode('pan');
@@ -8057,6 +8067,22 @@ window.CMG = window.CMG || {};
   function $sync() {
     document.getElementById('projectNameDisplay').textContent =
       Store.state.title || 'Untitled map';
+  }
+
+  /* The product name is undecided, so it is read from one constant rather than
+     written into the markup. Initials come from its capitals, so a rename needs
+     no second edit here. */
+  function applyProductName() {
+    var name = CMG.PRODUCT_NAME;
+    if (!name) return;
+    document.title = name;
+    var word = document.querySelector('.brand-text strong');
+    if (word) word.textContent = name;
+    var mark = document.querySelector('.brand-mark');
+    if (mark) {
+      var caps = name.replace(/[^A-Z]/g, '').slice(0, 2);
+      mark.textContent = caps || name.slice(0, 2).toUpperCase();
+    }
   }
 
   /** After opening a file or resetting, push the new state into every control. */

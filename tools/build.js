@@ -376,10 +376,18 @@ if (args.project) {
   project = JSON.parse(read(path.resolve(process.cwd(), args.project)));
 }
 
+/* The product name is undecided and lives in exactly one place — config.js.
+   Read it from there rather than repeating it, so a rename is one edit. */
+const PRODUCT_NAME = (function () {
+  const m = /CMG\.PRODUCT_NAME\s*=\s*'([^']+)'/.exec(read('assets/js/config.js'));
+  if (!m) throw new Error('CMG.PRODUCT_NAME not found in assets/js/config.js');
+  return m[1];
+})();
+
 const title = args.title ||
-  (MODE === 'demo' ? 'AssessMapper — demo'
-                   : (project && project.title ? project.title + ' — AssessMapper'
-                                               : 'AssessMapper'));
+  (MODE === 'demo' ? PRODUCT_NAME + ' — demo'
+                   : (project && project.title ? project.title + ' — ' + PRODUCT_NAME
+                                               : PRODUCT_NAME));
 
 const parts = [];
 parts.push('<title>' + title + '</title>');

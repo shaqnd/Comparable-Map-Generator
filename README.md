@@ -1,5 +1,9 @@
 # AssessMapper
 
+*Working name — the product name is not settled. It lives in one constant,
+`CMG.PRODUCT_NAME` in `assets/js/config.js`; nothing else hard-codes it, and the
+saved-file schema id deliberately carries no product name at all.*
+
 A single-page tool for building comparable sales exhibits for appraisal reports.
 Enter the subject — or a whole portfolio of them — and the comparables, confirm
 each location on aerial imagery, pull in parcel boundaries, adjust the labels,

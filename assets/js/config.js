@@ -378,10 +378,19 @@
   CMG.PRESET_KEY = 'cmg.parcelPresets.v1';
   CMG.PROJECT_VERSION = 2;      // 2 = many subjects; 1 files still open
 
+  /* The product name is not settled. It lives here and nowhere else, so the
+     decision is one edit rather than a migration: the window title, the sidebar
+     header and the single-file build titles all read it from here, and the
+     badge initials are derived from its capitals. */
+  CMG.PRODUCT_NAME = 'AssessMapper';   // working name — see the strategy brief
+
   /* Names the shape of a saved job, separately from the app build that wrote
      it. Anything that later reads these files — a comp repository, a sync
-     service — keys off this, not off the version number of the map tool.
+     service — keys off this.
+
+     Deliberately carries no product name. A saved corpus is the asset the whole
+     strategy rests on, and it must not be invalidated by a branding decision.
      See docs/DATA-MODEL.md. */
-  CMG.SCHEMA_ID = 'assessmapper.project/1';
+  CMG.SCHEMA_ID = 'comparable-sales-map/1';
 
 })(window.CMG);
