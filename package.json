@@ -1,0 +1,13 @@
+{
+  "name": "comparable-sales-map",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Comparable sales map exhibits for appraisal reports. No build step — open index.html.",
+  "scripts": {
+    "test": "node tests/run.js",
+    "build": "node tools/build.js --mode=live && node tools/build.js --mode=demo"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.1"
+  }
+}

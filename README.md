@@ -364,3 +364,21 @@ and © OpenStreetMap contributors. The attribution shown on the map must stay on
 exported images — it is a condition of using these free services. Geocoding by the US
 Census Bureau, Esri and OpenStreetMap/Nominatim. Parcel data belongs to the publishing
 county.
+
+---
+
+## Tests
+
+```
+npm install          # playwright only
+npm test             # 17 suites, 215 checks
+npm test -- smoke    # or a subset, matched by name
+```
+
+`tests/run.js` starts the static servers, produces the single-file builds and the
+seeded fixture, then drives a real Chromium against the real build. Nothing has to
+be running first. Only the outside world is stubbed — map tiles, the three
+geocoders and the county parcel services — because the machine running the tests
+is not guaranteed to reach any of them.
+
+If Playwright cannot find a browser, point `CHROME_PATH` at one you already have.

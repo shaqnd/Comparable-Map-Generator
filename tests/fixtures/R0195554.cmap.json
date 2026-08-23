@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "title": "Comparable Sales Map",
+  "subtitle": "Subject R0195554 — 22600 Interstate 76, Brighton, CO · Mega Warehouse",
+  "exportName": "R0195554-comparable-sales-map",
+  "subject": {
+    "id": "subject-r0195554",
+    "role": "subject",
+    "number": null,
+    "address": "22600 Interstate 76, Brighton, CO",
+    "lat": null,
+    "lng": null,
+    "geocode": null,
+    "pinned": false,
+    "fields": {
+      "saleDate": "",
+      "salePrice": "",
+      "size": "352,240 SF",
+      "unitPrice": "",
+      "notes": ""
+    },
+    "labelText": "SUBJECT\n22600 Interstate 76\nBrighton, CO\n352,240 SF",
+    "labelCustom": false,
+    "labelOffset": null,
+    "showLabel": true,
+    "parcel": null
+  },
+  "comps": [
+    {
+      "id": "comp-1",
+      "role": "comp",
+      "number": 1,
+      "address": "1953 Gun Club Road, Aurora, CO",
+      "lat": null,
+      "lng": null,
+      "geocode": null,
+      "pinned": false,
+      "fields": {
+        "saleDate": "Sep-21",
+        "salePrice": "$36,150,000",
+        "size": "220,000 SF",
+        "unitPrice": "$164.32 / SF",
+        "notes": ""
+      },
+      "labelText": "COMPARABLE 1\n1953 Gun Club Road\nAurora, CO\n$36,150,000  ·  Sep-21\n220,000 SF\n$164.32 / SF",
+      "labelCustom": false,
+      "labelOffset": null,
+      "showLabel": true,
+      "parcel": null
+    },
+    {
+      "id": "comp-2",
+      "role": "comp",
+      "number": 2,
+      "address": "17776-18146 E 84th Avenue, Commerce City, CO",
+      "lat": null,
+      "lng": null,
+      "geocode": null,
+      "pinned": false,
+      "fields": {
+        "saleDate": "Oct-24",
+        "salePrice": "$61,000,000",
+        "size": "594,400 SF",
+        "unitPrice": "$102.62 / SF",
+        "notes": ""
+      },
+      "labelText": "COMPARABLE 2\n17776-18146 E 84th Avenue\nCommerce City, CO\n$61,000,000  ·  Oct-24\n594,400 SF\n$102.62 / SF",
+      "labelCustom": false,
+      "labelOffset": null,
+      "showLabel": true,
+      "parcel": null
+    },
+    {
+      "id": "comp-3",
+      "role": "comp",
+      "number": 3,
+      "address": "17501 E 84th Avenue, Commerce City, CO",
+      "lat": null,
+      "lng": null,
+      "geocode": null,
+      "pinned": false,
+      "fields": {
+        "saleDate": "Dec-21",
+        "salePrice": "$97,558,700",
+        "size": "999,780 SF",
+        "unitPrice": "$97.58 / SF",
+        "notes": ""
+      },
+      "labelText": "COMPARABLE 3\n17501 E 84th Avenue\nCommerce City, CO\n$97,558,700  ·  Dec-21\n999,780 SF\n$97.58 / SF",
+      "labelCustom": false,
+      "labelOffset": null,
+      "showLabel": true,
+      "parcel": null
+    },
+    {
+      "id": "comp-4",
+      "role": "comp",
+      "number": 4,
+      "address": "1910 N Gun Club Road, Aurora, CO",
+      "lat": null,
+      "lng": null,
+      "geocode": null,
+      "pinned": false,
+      "fields": {
+        "saleDate": "Jun-21",
+        "salePrice": "$25,000,000",
+        "size": "163,386 SF",
+        "unitPrice": "$153.01 / SF",
+        "notes": ""
+      },
+      "labelText": "COMPARABLE 4\n1910 N Gun Club Road\nAurora, CO\n$25,000,000  ·  Jun-21\n163,386 SF\n$153.01 / SF",
+      "labelCustom": false,
+      "labelOffset": null,
+      "showLabel": true,
+      "parcel": null
+    }
+  ],
+  "view": {
+    "lat": 39.85,
+    "lng": -104.83,
+    "zoom": 11,
+    "basemap": "aerial",
+    "labelOverlay": true
+  },
+  "style": {
+    "subjectColor": "#d61f26",
+    "compColor": "#1a56db",
+    "parcelColor": "#ffd400",
+    "parcelFill": true,
+    "labelSize": 13,
+    "pinScale": 100,
+    "showLabels": true,
+    "showLeaders": true,
+    "showConnectors": false,
+    "showTitle": true,
+    "showLegend": true,
+    "legendPos": "bottom-right",
+    "legendDistance": true,
+    "showNorth": true,
+    "showScale": true,
+    "basemapDim": 100,
+    "radiusRings": ""
+  },
+  "parcelService": {
+    "presetId": "none",
+    "url": ""
+  },
+  "exportCfg": {
+    "presetId": "body-half",
+    "w": 6.5,
+    "h": 4,
+    "dpi": 300
+  }
+}

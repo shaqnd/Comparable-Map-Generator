@@ -28,29 +28,34 @@
 
   var PALETTES = {
     aerial: {
-      ground: '#474a40', block: '#585a4d', building: '#8f8a7c',
-      shadow: 'rgba(0,0,0,.30)', road: '#74736a', roadMajor: '#848177',
-      park: '#3f5c33', casing: null, ink: '#f2efe6'
+      ground: '#6d6a5e', block: '#7b7666', building: '#b4afa4', roofDark: '#6f6a60',
+      shadow: 'rgba(20,18,14,.34)', road: '#57564f', roadMajor: '#5e5d55',
+      park: '#5a6b3c', canopy: '#3f5230', water: '#4a5a63', lot: 'rgba(0,0,0,.16)',
+      paving: '#847e70', casing: null, ink: '#f4f1e8', inkHalo: 'rgba(20,20,18,.75)'
     },
     street: {
-      ground: '#e9e6df', block: '#f7f5f0', building: '#e3dfd5',
+      ground: '#ece8e0', block: '#f8f6f2', building: '#e0dbd0', roofDark: '#d6d0c4',
       shadow: null, road: '#ffffff', roadMajor: '#ffffff',
-      park: '#d2e5c6', casing: '#d8d4ca', ink: '#5d6b53'
+      park: '#d6e7c8', canopy: '#c2dcb0', water: '#a9c8d8', lot: 'rgba(0,0,0,.07)',
+      paving: '#efece5', casing: '#d8d4ca', ink: '#5d6b53', inkHalo: 'rgba(255,255,255,.9)'
     },
     osm: {
-      ground: '#e8e2d8', block: '#f4efe4', building: '#dcd3c3',
+      ground: '#e8e2d8', block: '#f4efe4', building: '#dcd3c3', roofDark: '#d0c6b4',
       shadow: null, road: '#ffffff', roadMajor: '#fbe9a5',
-      park: '#c9e2b4', casing: '#cfc7b6', ink: '#6b6250'
+      park: '#c9e2b4', canopy: '#b6d69f', water: '#9fc4dd', lot: 'rgba(0,0,0,.07)',
+      paving: '#ece5d8', casing: '#cfc7b6', ink: '#6b6250', inkHalo: 'rgba(255,255,255,.9)'
     },
     topo: {
-      ground: '#e6e5d6', block: '#eeeddf', building: '#d8d5c2',
+      ground: '#e6e5d6', block: '#eeeddf', building: '#d8d5c2', roofDark: '#ccc8b4',
       shadow: null, road: '#ffffff', roadMajor: '#f3dfa8',
-      park: '#c6dcae', casing: '#cbc8b2', ink: '#6c6a52'
+      park: '#c6dcae', canopy: '#b3cf9a', water: '#a8c8d6', lot: 'rgba(0,0,0,.07)',
+      paving: '#e4e2d0', casing: '#cbc8b2', ink: '#6c6a52', inkHalo: 'rgba(255,255,255,.9)'
     },
     light: {
-      ground: '#eef0f1', block: '#f7f8f9', building: '#e3e6e8',
+      ground: '#eef0f1', block: '#f8f9fa', building: '#e3e6e8', roofDark: '#dadde0',
       shadow: null, road: '#ffffff', roadMajor: '#ffffff',
-      park: '#e2ebe0', casing: '#dcdfe2', ink: '#7c848b'
+      park: '#e4ede1', canopy: '#d6e5d2', water: '#cfe0e8', lot: 'rgba(0,0,0,.05)',
+      paving: '#f0f2f3', casing: '#dcdfe2', ink: '#7c848b', inkHalo: 'rgba(255,255,255,.9)'
     }
   };
 
@@ -78,10 +83,41 @@
     return 'rgb(' + r + ',' + g + ',' + b + ')';
   }
 
+  /* Every feature below is a pure function of WORLD position, never of the
+     tile being drawn. That is what makes adjacent tiles line up — a river or a
+     diagonal avenue computed per-tile would break at every seam. */
+
+  /* Linear features repeat on a period in world space. Anchoring them to the
+     world origin instead would put them millions of pixels from anywhere a user
+     actually looks, and they would never appear. */
+  function waveAt(wx, pitch) {
+    return Math.sin(wx / (pitch * 7)) * pitch * 2.1
+         + Math.sin(wx / (pitch * 2.3)) * pitch * 0.45;
+  }
+
+  /** Indices of every repeat of a feature that could cross this tile. */
+  function bands(oy, ts, period, slack) {
+    var lo = Math.floor((oy - slack) / period);
+    var hi = Math.ceil((oy + ts + slack) / period);
+    var out = [];
+    for (var k = lo; k <= hi; k++) out.push(k * period);
+    return out;
+  }
+
+  /** A block's character, stable for that block at that zoom. */
+  function blockKind(bx, by, z) {
+    var r = rnd(bx, by, z, 61);
+    if (r > 0.93) return 'park';
+    if (r > 0.86) return 'paving';      // surface parking / yard
+    if (r > 0.80) return 'large';       // one big footprint — warehouse, box store
+    return 'urban';
+  }
+
   function drawBase(ctx, coords, pal, ts) {
     var z = coords.z;
     var pitch = blockPitch(z);
     var ox = coords.x * ts, oy = coords.y * ts;
+    var detail = pitch >= 26;
 
     ctx.fillStyle = pal.ground;
     ctx.fillRect(0, 0, ts, ts);
@@ -90,44 +126,150 @@
     var span = Math.ceil(ts / pitch) + 1;
     var inset = Math.max(1, pitch * 0.055);
 
-    for (var i = 0; i <= span; i++) {
-      for (var j = 0; j <= span; j++) {
+    for (var i = -1; i <= span; i++) {
+      for (var j = -1; j <= span; j++) {
         var bx = bx0 + i, by = by0 + j;
         var x = bx * pitch - ox, y = by * pitch - oy;
         var bw = pitch - inset * 2;
+        var kind = blockKind(bx, by, z);
 
-        if (rnd(bx, by, z, 3) > 0.91) {
+        if (kind === 'park') {
           ctx.fillStyle = pal.park;
           ctx.fillRect(x + inset, y + inset, bw, bw);
+          if (detail) scatterCanopy(ctx, x + inset, y + inset, bw, bx, by, z, pal, 7);
           continue;
         }
-        // Per-block tint so the grid reads as built-up ground rather than a
-        // flat lattice, which matters most at the zoomed-out framing.
-        ctx.fillStyle = shade(pal.block, Math.round((rnd(bx, by, z, 8) - 0.5) * 26));
+
+        ctx.fillStyle = kind === 'paving' ? pal.paving
+                      : shade(pal.block, Math.round((rnd(bx, by, z, 8) - 0.5) * 22));
         ctx.fillRect(x + inset, y + inset, bw, bw);
 
-        if (pitch < 36) continue;
-        var count = 2 + Math.floor(rnd(bx, by, z, 5) * 3);
-        for (var k = 0; k < count; k++) {
-          var w = bw * (0.16 + rnd(bx, by, z, 30 + k) * 0.30);
-          var h = bw * (0.16 + rnd(bx, by, z, 40 + k) * 0.30);
-          var px = x + inset + rnd(bx, by, z, 10 + k) * (bw - w);
-          var py = y + inset + rnd(bx, by, z, 20 + k) * (bw - h);
-          if (pal.shadow) {
-            ctx.fillStyle = pal.shadow;
-            ctx.fillRect(px + w * 0.10, py + h * 0.12, w, h);
-          }
-          ctx.fillStyle = pal.building;
-          ctx.fillRect(px, py, w, h);
-        }
+        if (!detail) continue;
+
+        // Lot lines. An appraisal map lives or dies on parcel texture, and a
+        // block drawn as one flat rectangle reads as a placeholder.
+        var lots = kind === 'large' ? 1 : 2 + Math.floor(rnd(bx, by, z, 71) * 3);
+        drawLots(ctx, x + inset, y + inset, bw, lots, pal, bx, by, z);
+
+        if (kind === 'paving') { scatterCanopy(ctx, x + inset, y + inset, bw, bx, by, z, pal, 2); continue; }
+        buildings(ctx, x + inset, y + inset, bw, lots, kind, pal, bx, by, z);
+        scatterCanopy(ctx, x + inset, y + inset, bw, bx, by, z, pal, 3);
       }
     }
 
-    // Roads last so they sit over the blocks.
-    for (var a = -1; a <= span + 1; a++) {
+    water(ctx, ox, oy, ts, pitch, pal);
+
+    for (var a = -2; a <= span + 2; a++) {
       paintRoad(ctx, (bx0 + a), true, pitch, ox, oy, ts, pal);
       paintRoad(ctx, (by0 + a), false, pitch, ox, oy, ts, pal);
     }
+    diagonal(ctx, ox, oy, ts, pitch, pal);
+    rail(ctx, ox, oy, ts, pitch, pal);
+  }
+
+  /** Split a block into lots and rule the boundaries. */
+  function drawLots(ctx, x, y, bw, lots, pal, bx, by, z) {
+    if (lots < 2) return;
+    ctx.strokeStyle = pal.lot;
+    ctx.lineWidth = 1;
+    var vertical = rnd(bx, by, z, 83) > 0.5;
+    for (var k = 1; k < lots; k++) {
+      var t = k / lots + (rnd(bx, by, z, 90 + k) - 0.5) * 0.10;
+      ctx.beginPath();
+      if (vertical) { ctx.moveTo(x + bw * t, y); ctx.lineTo(x + bw * t, y + bw); }
+      else { ctx.moveTo(x, y + bw * t); ctx.lineTo(x + bw, y + bw * t); }
+      ctx.stroke();
+    }
+  }
+
+  function buildings(ctx, x, y, bw, lots, kind, pal, bx, by, z) {
+    var count = kind === 'large' ? 1 : lots;
+    for (var k = 0; k < count; k++) {
+      var frac = 1 / count;
+      var lx = x + bw * frac * k;
+      var lw = bw * frac;
+      var w = lw * (kind === 'large' ? 0.86 : 0.52 + rnd(bx, by, z, 30 + k) * 0.30);
+      var h = bw * (kind === 'large' ? 0.72 : 0.38 + rnd(bx, by, z, 40 + k) * 0.34);
+      var px = lx + (lw - w) * (0.25 + rnd(bx, by, z, 10 + k) * 0.5);
+      var py = y + (bw - h) * (0.25 + rnd(bx, by, z, 20 + k) * 0.5);
+
+      if (pal.shadow) {
+        ctx.fillStyle = pal.shadow;
+        ctx.fillRect(px + w * 0.09, py + h * 0.11, w, h);
+      }
+      // Roofs vary: real imagery is never one flat tone across a block.
+      ctx.fillStyle = rnd(bx, by, z, 50 + k) > 0.62 ? pal.roofDark : pal.building;
+      ctx.fillRect(px, py, w, h);
+    }
+  }
+
+  /** Tree canopy — the strongest single cue that imagery is real. */
+  function scatterCanopy(ctx, x, y, bw, bx, by, z, pal, n) {
+    if (!pal.canopy || bw < 20) return;
+    ctx.fillStyle = pal.canopy;
+    for (var k = 0; k < n; k++) {
+      var r = bw * (0.045 + rnd(bx, by, z, 110 + k) * 0.055);
+      var cx = x + rnd(bx, by, z, 120 + k) * bw;
+      var cy = y + rnd(bx, by, z, 130 + k) * bw;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function water(ctx, ox, oy, ts, pitch, pal) {
+    if (!pal.water) return;
+    var half = pitch * 0.34;
+    ctx.fillStyle = pal.water;
+    bands(oy, ts, pitch * 22, pitch * 3).forEach(function (base) {
+      ctx.beginPath();
+      for (var sx = -8; sx <= ts + 8; sx += 4) {
+        var wy = base + waveAt(ox + sx, pitch) - oy;
+        if (sx === -8) ctx.moveTo(sx, wy - half); else ctx.lineTo(sx, wy - half);
+      }
+      for (var ex = ts + 8; ex >= -8; ex -= 4) {
+        ctx.lineTo(ex, base + waveAt(ox + ex, pitch) - oy + half);
+      }
+      ctx.closePath();
+      ctx.fill();
+    });
+  }
+
+  /** Diagonal arterials, so the grid does not read as graph paper. */
+  function diagonal(ctx, ox, oy, ts, pitch, pal) {
+    var w = Math.max(2, pitch * 0.115);
+    var slope = 0.58;
+    var skew = ox * slope;
+    ctx.save();
+    ctx.lineCap = 'butt';
+    bands(oy - skew, ts, pitch * 17, pitch * 12).forEach(function (base) {
+      var y0 = base + skew + (-10) * slope - oy;
+      var y1 = base + skew + (ts + 10) * slope - oy;
+      if (pal.casing) {
+        ctx.strokeStyle = pal.casing; ctx.lineWidth = w + 2;
+        ctx.beginPath(); ctx.moveTo(-10, y0); ctx.lineTo(ts + 10, y1); ctx.stroke();
+      }
+      ctx.strokeStyle = pal.roadMajor; ctx.lineWidth = w;
+      ctx.beginPath(); ctx.moveTo(-10, y0); ctx.lineTo(ts + 10, y1); ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function rail(ctx, ox, oy, ts, pitch, pal) {
+    if (pitch < 30) return;
+    var slope = -0.22;
+    var skew = ox * slope;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(118,114,102,.9)';
+    ctx.lineWidth = Math.max(1.2, pitch * 0.020);
+    ctx.setLineDash([pitch * 0.10, pitch * 0.07]);
+    bands(oy - skew, ts, pitch * 29, pitch * 9).forEach(function (base) {
+      ctx.beginPath();
+      ctx.moveTo(-10, base + skew + (-10) * slope - oy);
+      ctx.lineTo(ts + 10, base + skew + (ts + 10) * slope - oy);
+      ctx.stroke();
+    });
+    ctx.restore();
   }
 
   function isMajor(index) { return ((index % 4) + 4) % 4 === 0; }
@@ -161,7 +303,7 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(255,255,255,.85)';
+    ctx.strokeStyle = pal.inkHalo || 'rgba(255,255,255,.85)';
     ctx.fillStyle = pal.ink;
 
     for (var a = -1; a <= span + 1; a++) {

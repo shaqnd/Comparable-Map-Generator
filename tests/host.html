@@ -1,0 +1,15 @@
+<!doctype html><meta charset=utf8>
+<style>html,body{margin:0;background:#faf9f5}iframe{display:block;width:100%;border:0;height:150px}</style>
+<iframe id="f" src="file:///home/user/Comparable-Map-Generator/demo/comparable-map-demo.html"></iframe>
+<script>
+  // Mimic the host: poll the child's scrollHeight and resize the frame to it.
+  var f = document.getElementById('f');
+  setInterval(function () {
+    try {
+      var d = f.contentDocument;
+      if (!d) return;
+      var h = Math.max(d.documentElement.scrollHeight, d.body ? d.body.scrollHeight : 0);
+      if (h && Math.abs(parseInt(f.style.height || '150') - h) > 1) f.style.height = h + 'px';
+    } catch (e) {}
+  }, 120);
+</script>
