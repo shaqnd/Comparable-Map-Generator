@@ -45,14 +45,31 @@ const path = require('path');
   });
   check('basemap has real detail', nonBlank > 3, nonBlank + ' distinct colours sampled');
 
-  // geocode a known address
+  // Geocode a known address.
+  //
+  // Adding a comparable rebuilds the whole card list, so the new card is
+  // targeted by its own id — ":last-child" can be swapped out between the fill
+  // and the keypress, which loses the typed address and geocodes nothing.
+  const cardsBefore = await p.locator('#compList .prop-card').count();
   await p.click('#addComp');
-  await p.fill('#compList .prop-card:last-child .prop-address', '3000 Larimer St, Denver, CO');
-  await p.press('#compList .prop-card:last-child .prop-address', 'Enter');
-  // the demo geocoder answers with a simulated delay — wait for the result,
-  // do not guess at how long it takes
-  await p.waitForFunction(() => document.querySelectorAll('.cmg-pin').length === 5,
-                          null, { timeout: 15000 }).catch(() => {});
+  await p.waitForFunction(n => document.querySelectorAll('#compList .prop-card').length === n + 1,
+                          cardsBefore, { timeout: 10000 });
+
+  const newId = await p.evaluate(() => {
+    const c = CMG.store.state.comps;
+    return c[c.length - 1].id;
+  });
+  const field = `#compList .prop-card[data-id="${newId}"] .prop-address`;
+
+  await p.fill(field, '3000 Larimer St, Denver, CO');
+  await p.waitForFunction(id => (CMG.store.find(id) || {}).address?.includes('Larimer'),
+                          newId, { timeout: 5000 });
+  await p.press(field, 'Enter');
+
+  // The demo geocoder answers with a simulated delay — wait on the result
+  // rather than guessing how long it takes.
+  await p.waitForFunction(id => (CMG.store.find(id) || {}).lat != null,
+                          newId, { timeout: 20000 }).catch(() => {});
   check('offline geocoder locates address', await p.locator('.cmg-pin').count() === 5,
         String(await p.locator('.cmg-pin').count()));
 

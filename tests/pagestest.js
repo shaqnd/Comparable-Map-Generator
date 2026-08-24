@@ -16,7 +16,7 @@ const TILE = H.TILE;
   await p.waitForTimeout(2000);
 
   const out = []; const ck = (n, ok, x) => out.push(`${ok?'PASS':'FAIL'}  ${n}${x?' — '+x:''}`);
-  ck('title', await p.title() === 'AssessMapper', await p.title());
+  ck('title', await p.title() === 'CompCarto', await p.title());
   ck('no 404s on assets', missing.length === 0, missing.slice(0,3).join(' | '));
   ck('scripts all ran', await p.evaluate(() => !!(window.CMG && CMG.store && CMG.mapview && CMG.ui)));
   ck('leaflet + html2canvas served',

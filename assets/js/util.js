@@ -1,4 +1,4 @@
-/* AssessMapper — small helpers.
+/* CompCarto — small helpers.
    Loaded first; everything else hangs off the CMG namespace. */
 window.CMG = window.CMG || {};
 

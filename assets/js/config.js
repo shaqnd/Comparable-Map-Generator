@@ -378,11 +378,11 @@
   CMG.PRESET_KEY = 'cmg.parcelPresets.v1';
   CMG.PROJECT_VERSION = 2;      // 2 = many subjects; 1 files still open
 
-  /* The product name is not settled. It lives here and nowhere else, so the
-     decision is one edit rather than a migration: the window title, the sidebar
-     header and the single-file build titles all read it from here, and the
-     badge initials are derived from its capitals. */
-  CMG.PRODUCT_NAME = 'AssessMapper';   // working name — see the strategy brief
+  /* The product name lives here and nowhere else. The window title, the sidebar
+     header and the single-file build titles all read it from here, and the badge
+     initials are derived from its capitals. It is deliberately absent from
+     CMG.SCHEMA_ID below, so a saved corpus never depends on it. */
+  CMG.PRODUCT_NAME = 'CompCarto';
 
   /* Names the shape of a saved job, separately from the app build that wrote
      it. Anything that later reads these files — a comp repository, a sync

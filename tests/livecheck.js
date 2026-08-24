@@ -14,8 +14,8 @@ const H = require('./harness');
   await p.waitForTimeout(2000);
 
   const out = []; const ck = (n, ok, x) => out.push(`${ok?'PASS':'FAIL'}  ${n}${x?' — '+x:''}`);
-  ck('page title', await p.title() === 'AssessMapper', await p.title());
-  ck('brand renamed', (await p.locator('.brand-text strong').innerText()) === 'AssessMapper');
+  ck('page title', await p.title() === 'CompCarto', await p.title());
+  ck('brand renamed', (await p.locator('.brand-text strong').innerText()) === 'CompCarto');
   ck('leaflet + html2canvas bundled',
      await p.evaluate(() => typeof L === 'object' && typeof html2canvas === 'function'));
   ck('map has area', await p.evaluate(() => {

@@ -36,10 +36,10 @@ const fs = require('fs');
   };
 
   const now = await read(null);
-  ck('one constant holds the name', now.constant === 'AssessMapper', now.constant);
-  ck('window title follows it', now.title === 'AssessMapper', now.title);
-  ck('sidebar header follows it', now.header === 'AssessMapper', now.header);
-  ck('badge initials derive from capitals', now.mark === 'AM', now.mark);
+  ck('one constant holds the name', now.constant === 'CompCarto', now.constant);
+  ck('window title follows it', now.title === 'CompCarto', now.title);
+  ck('sidebar header follows it', now.header === 'CompCarto', now.header);
+  ck('badge initials derive from capitals', now.mark === 'CC', now.mark);
   ck('schema id carries no product name',
      now.schema === 'comparable-sales-map/1' && !/assess/i.test(now.schema), now.schema);
 
@@ -47,7 +47,7 @@ const fs = require('fs');
   const cfgPath = require('path').join(H.ROOT, 'assets/js/config.js');
   const original = fs.readFileSync(cfgPath, 'utf8');
   try {
-    fs.writeFileSync(cfgPath, original.replace("CMG.PRODUCT_NAME = 'AssessMapper'",
+    fs.writeFileSync(cfgPath, original.replace("CMG.PRODUCT_NAME = 'CompCarto'",
                                                "CMG.PRODUCT_NAME = 'AssessorTrax'"));
     const renamed = await read(null);
     ck('renaming the constant renames the title', renamed.title === 'AssessorTrax', renamed.title);
@@ -62,7 +62,7 @@ const fs = require('fs');
   const src = ['index.html', 'assets/js/app.js', 'assets/js/ui.js', 'assets/js/store.js',
                'assets/js/mapview.js', 'assets/js/exporter.js']
     .map(f => fs.readFileSync(H.ROOT + '/' + f, 'utf8'));
-  const strays = src.filter(t => /AssessMapper|AssessorTrax|AssessorView/.test(t)).length;
+  const strays = src.filter(t => /CompCarto|AssessMapper|AssessorTrax|AssessorView/.test(t)).length;
   ck('no hard-coded name in markup or modules', strays === 0, strays + ' file(s) contain one');
 
   console.log(out.join('\n'));

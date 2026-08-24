@@ -1,8 +1,10 @@
-# AssessMapper
+# CompCarto
 
-*Working name — the product name is not settled. It lives in one constant,
-`CMG.PRODUCT_NAME` in `assets/js/config.js`; nothing else hard-codes it, and the
-saved-file schema id deliberately carries no product name at all.*
+*The product name lives in one constant, `CMG.PRODUCT_NAME` in
+`assets/js/config.js`; nothing else hard-codes it, and the saved-file schema id
+deliberately carries no product name at all. The repository is still named
+`Comparable-Map-Generator` — renaming it on GitHub would change the clone URL,
+so that is a deliberate separate step.*
 
 A single-page tool for building comparable sales exhibits for appraisal reports.
 Enter the subject — or a whole portfolio of them — and the comparables, confirm
